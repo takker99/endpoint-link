@@ -1,6 +1,13 @@
 import type { Endpoint } from "./shared_types.ts";
 import type { HandlerMap, SenderApiFromHandlers } from "./types.ts";
-import { genId, isAbortSignal, on, post, signalReady } from "./utils.ts";
+import {
+  genId,
+  isAbortSignal,
+  on,
+  post,
+  signalReady,
+  waitForReady,
+} from "./utils.ts";
 import type { CallMsg, CancelMsg, Msg, ResultMsg } from "./protocol.ts";
 
 export type * from "./types.ts";
@@ -87,20 +94,7 @@ export async function wrap<H extends HandlerMap>(
   timeoutMs = 5000,
 ): Promise<SenderApiFromHandlers<H>> {
   // Wait for endpoint to be ready before creating the API
-  await new Promise<void>((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      cleanup();
-      reject(new Error(`Endpoint readiness timeout after ${timeoutMs}ms`));
-    }, timeoutMs);
-
-    const cleanup = on(endpoint, (data) => {
-      if (data && data.kind === "ready") {
-        clearTimeout(timeoutId);
-        cleanup();
-        resolve();
-      }
-    });
-  });
+  await waitForReady(endpoint, timeoutMs);
 
   type API = SenderApiFromHandlers<H>;
   const replies = new Map<
