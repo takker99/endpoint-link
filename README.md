@@ -16,7 +16,7 @@ Quick example (Phase 1: non-stream)
 
 ```ts
 // worker.ts
-import { expose } from "./mod.ts";
+import { expose } from "@takker/endpoint-link";
 
 const handlers = {
   async add(a: number, b: number, _signal?: AbortSignal) {
@@ -30,7 +30,7 @@ export type Receiver = typeof handlers;
 expose(self as any, handlers);
 
 // main.ts
-import { wrap } from "./mod.ts";
+import { wrap } from "@takker/endpoint-link";
 //import type { Receiver } from "./worker.ts";
 
 const api = wrap<Receiver>(new Worker("./worker.ts", { type: "module" }), [
