@@ -19,23 +19,12 @@ export function post(endpoint: Endpoint, msg: any, transfer?: Transferable[]) {
 // attach message listener; returns a remover.
 // deno-lint-ignore no-explicit-any
 export function on(endpoint: Endpoint, handler: (data: any) => void) {
-  if (typeof endpoint.addEventListener === "function") {
-    // deno-lint-ignore no-explicit-any
-    const l = (ev: any) => handler(ev.data);
-    endpoint.addEventListener("message", l);
-    return () =>
-      endpoint.removeEventListener &&
-      endpoint.removeEventListener("message", l);
-  } else if ("onmessage" in endpoint) {
-    const prev = endpoint.onmessage;
-    // deno-lint-ignore no-explicit-any
-    endpoint.onmessage = (ev: any) => handler(ev.data);
-    return () => {
-      endpoint.onmessage = prev;
-    };
-  } else {
-    return () => {};
-  }
+  const controller = new AbortController();
+  // deno-lint-ignore no-explicit-any
+  endpoint.addEventListener("message", (ev: any) => handler(ev.data), {
+    signal: controller.signal,
+  });
+  return controller.abort.bind(controller);
 }
 
 // deno-lint-ignore no-explicit-any

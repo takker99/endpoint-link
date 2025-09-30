@@ -1,35 +1,6 @@
 import { expose, wrap } from "./mod.ts";
 import type { Endpoint } from "./shared_types.ts";
-
-// Simple assert functions (avoiding @std/assert dependency issues)
-function assertEquals(actual: unknown, expected: unknown, msg?: string) {
-  if (actual !== expected) {
-    throw new Error(msg || `Expected ${expected}, got ${actual}`);
-  }
-}
-
-async function assertRejects(
-  fn: () => Promise<unknown>,
-  // deno-lint-ignore no-explicit-any
-  ErrorClass?: new (...args: any[]) => Error,
-  msgIncludes?: string,
-) {
-  try {
-    await fn();
-    throw new Error("Expected promise to reject, but it resolved");
-  } catch (error) {
-    if (ErrorClass && !(error instanceof ErrorClass)) {
-      throw new Error(
-        `Expected error to be instance of ${ErrorClass.name}, got ${error?.constructor?.name}`,
-      );
-    }
-    if (msgIncludes && !String(error).includes(msgIncludes)) {
-      throw new Error(
-        `Expected error message to include "${msgIncludes}", got "${error}"`,
-      );
-    }
-  }
-}
+import { assertEquals, assertRejects } from "@std/assert";
 
 // Helper: make an in-memory Endpoint using MessageChannel
 function memoryPair(): [Endpoint, Endpoint] {
@@ -289,22 +260,13 @@ Deno.test("utils.post handles transferables", async () => {
   let receivedData: any;
 
   // Set up listener before posting
-  const cleanup = b.addEventListener
-    ? (() => {
-      // deno-lint-ignore no-explicit-any
-      const handler = (ev: any) => receivedData = ev.data;
-      b.addEventListener("message", handler);
-      return () =>
-        b.removeEventListener && b.removeEventListener("message", handler);
-    })()
-    : (() => {
-      // deno-lint-ignore no-explicit-any
-      const prev = (b as any).onmessage;
-      // deno-lint-ignore no-explicit-any
-      (b as any).onmessage = (ev: any) => receivedData = ev.data;
-      // deno-lint-ignore no-explicit-any
-      return () => (b as any).onmessage = prev;
-    })();
+  const cleanup = (() => {
+    const controller = new AbortController();
+    // deno-lint-ignore no-explicit-any
+    const handler = (ev: any) => receivedData = ev.data;
+    b.addEventListener("message", handler, { signal: controller.signal });
+    return controller.abort.bind(controller);
+  })();
 
   // Post with transferables
   post(a, { test: "data", buf }, [buf]);
@@ -335,52 +297,6 @@ Deno.test("utils.post fallback when transferables fail", async () => {
   // Should not throw, should fallback to posting without transfer
   // deno-lint-ignore no-explicit-any
   post(mockEndpoint as any, { test: "data" }, [new ArrayBuffer(10)]);
-});
-
-Deno.test("utils.on with onmessage fallback", async () => {
-  const { on } = await import("./utils.ts");
-
-  // Create endpoint that only supports onmessage (not addEventListener)
-  const mockEndpoint = {
-    // deno-lint-ignore no-explicit-any
-    onmessage: null as any,
-  };
-
-  // deno-lint-ignore no-explicit-any
-  let received: any;
-  // deno-lint-ignore no-explicit-any
-  const cleanup = on(mockEndpoint as any, (data) => {
-    received = data;
-  });
-
-  // Simulate message
-  if (mockEndpoint.onmessage) {
-    mockEndpoint.onmessage({ data: "test-message" });
-  }
-
-  assertEquals(received, "test-message");
-
-  // Test cleanup restores previous handler
-  const prevHandler = () => {};
-  mockEndpoint.onmessage = prevHandler;
-  // deno-lint-ignore no-explicit-any
-  const cleanup2 = on(mockEndpoint as any, () => {});
-  cleanup2();
-  assertEquals(mockEndpoint.onmessage, prevHandler);
-
-  cleanup();
-});
-
-Deno.test("utils.on with no message support", async () => {
-  const { on } = await import("./utils.ts");
-
-  // Create endpoint that supports neither addEventListener nor onmessage
-  const mockEndpoint = {};
-
-  // Should return no-op cleanup function
-  // deno-lint-ignore no-explicit-any
-  const cleanup = on(mockEndpoint as any, () => {});
-  cleanup(); // Should not throw
 });
 
 Deno.test("utils.genId fallback when crypto fails", async () => {

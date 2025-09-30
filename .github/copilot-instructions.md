@@ -86,8 +86,8 @@ reconstructed Error on sender
 **Critical utilities** (reuse these):
 
 - `utils.ts`: `post()` handles transferables, `on()` works with both
-  addEventListener and onmessage patterns, `genId()` uses crypto.getRandomValues
-  with Math.random fallback
+  addEventListener patterns, `genId()` uses crypto.getRandomValues with
+  Math.random fallback
 - `types.ts`: Complex type mappings for sender/receiver arg/return
   transformation
 
