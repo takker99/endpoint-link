@@ -1,6 +1,6 @@
-import { genId, isAbortSignal, post } from "./utils.ts";
+import { genId, isAbortSignal, post, signalReady, waitForReady } from "./utils.ts";
 import type { Endpoint } from "./shared_types.ts";
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertRejects } from "@std/assert";
 
 // Helper: make an in-memory Endpoint using MessageChannel
 function memoryPair(): [Endpoint, Endpoint] {
@@ -99,4 +99,56 @@ Deno.test("utils.genId fallback when crypto fails", () => {
     // deno-lint-ignore no-explicit-any
     (crypto as any).getRandomValues = originalGetRandomValues;
   }
+});
+
+Deno.test("utils.signalReady sends ready message", async () => {
+  const [a, b] = memoryPair();
+  
+  // deno-lint-ignore no-explicit-any
+  let receivedMessage: any;
+  const cleanup = (() => {
+    const controller = new AbortController();
+    // deno-lint-ignore no-explicit-any
+    const handler = (ev: any) => receivedMessage = ev.data;
+    b.addEventListener("message", handler, { signal: controller.signal });
+    return controller.abort.bind(controller);
+  })();
+
+  signalReady(a);
+
+  // Give it time to arrive
+  await new Promise((resolve) => setTimeout(resolve, 10));
+
+  assertEquals(receivedMessage?.kind, "ready");
+
+  cleanup();
+  closePorts(a, b);
+});
+
+Deno.test("utils.waitForReady resolves when ready message received", async () => {
+  const [a, b] = memoryPair();
+
+  // Start waiting for ready
+  const readyPromise = waitForReady(b, 1000);
+
+  // Send ready message after a short delay
+  setTimeout(() => signalReady(a), 10);
+
+  // Should resolve without throwing
+  await readyPromise;
+
+  closePorts(a, b);
+});
+
+Deno.test("utils.waitForReady times out when no ready message", async () => {
+  const [a, b] = memoryPair();
+
+  // Wait for ready with a very short timeout
+  await assertRejects(
+    () => waitForReady(b, 50),
+    Error,
+    "Endpoint readiness timeout after 50ms"
+  );
+
+  closePorts(a, b);
 });

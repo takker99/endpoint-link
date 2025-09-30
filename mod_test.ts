@@ -1,4 +1,4 @@
-import { expose, wrap } from "./mod.ts";
+import { expose, wrap, waitForReady } from "./mod.ts";
 import type { Endpoint } from "./shared_types.ts";
 import { assertEquals, assertRejects } from "@std/assert";
 
@@ -640,5 +640,59 @@ Deno.test("RPC expose cancel with missing callId", async () => {
     // deno-lint-ignore no-explicit-any
     (exposedHandlers as any).__endpoint_link_close();
   }
+  closePorts(a, b);
+});
+
+Deno.test("RPC expose sends ready signal", async () => {
+  const [a, b] = memoryPair();
+  const handlers = {
+    test() {
+      return "works";
+    },
+  };
+
+  // Wait for ready signal - should resolve when expose is called
+  const readyPromise = waitForReady(b, 1000);
+  
+  // Expose handlers - this should send ready signal
+  const exposedHandlers = expose(a, handlers);
+  
+  // Ready signal should have been received
+  await readyPromise;
+
+  // Cleanup
+  // deno-lint-ignore no-explicit-any
+  if ((exposedHandlers as any).__endpoint_link_close) {
+    // deno-lint-ignore no-explicit-any
+    (exposedHandlers as any).__endpoint_link_close();
+  }
+  closePorts(a, b);
+});
+
+Deno.test("RPC readiness protocol with delayed expose", async () => {
+  const [a, b] = memoryPair();
+  const handlers = {
+    test() {
+      return "success";
+    },
+  };
+
+  // Start waiting for ready signal
+  const readyPromise = waitForReady(b, 1000);
+  
+  // Expose handlers after a delay
+  setTimeout(() => {
+    expose(a, handlers);
+  }, 50);
+  
+  // Should resolve when expose sends ready signal
+  await readyPromise;
+
+  // Now we can safely create API and use it
+  const api = wrap<typeof handlers>(b, ["test"]);
+  assertEquals(await api.test(), "success");
+
+  // Cleanup
+  api.close();
   closePorts(a, b);
 });

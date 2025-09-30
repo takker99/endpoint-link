@@ -1,4 +1,5 @@
 import type { Endpoint } from "./shared_types.ts";
+import type { ReadyMsg } from "./protocol.ts";
 
 // post wrapper handling transferables when available.
 // deno-lint-ignore no-explicit-any
@@ -42,4 +43,27 @@ export function genId() {
   } catch {
     return Math.random().toString(36).slice(2);
   }
+}
+
+// Signal that this endpoint is ready to receive messages
+export function signalReady(endpoint: Endpoint) {
+  post(endpoint, { kind: "ready" } as ReadyMsg);
+}
+
+// Wait for an endpoint to signal it's ready before making calls
+export function waitForReady(endpoint: Endpoint, timeoutMs = 5000): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      cleanup();
+      reject(new Error(`Endpoint readiness timeout after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    const cleanup = on(endpoint, (data) => {
+      if (data && data.kind === "ready") {
+        clearTimeout(timeoutId);
+        cleanup();
+        resolve();
+      }
+    });
+  });
 }

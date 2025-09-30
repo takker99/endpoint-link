@@ -13,4 +13,5 @@ export type CancelMsg = {
   kind: "cancel";
   idRef?: string;
 }; // tolerate legacy 'id'
-export type Msg = CallMsg | ResultMsg | CancelMsg;
+export type ReadyMsg = { kind: "ready" };
+export type Msg = CallMsg | ResultMsg | CancelMsg | ReadyMsg;

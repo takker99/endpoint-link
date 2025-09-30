@@ -1,10 +1,11 @@
 import type { Endpoint } from "./shared_types.ts";
 import type { HandlerMap, SenderApiFromHandlers } from "./types.ts";
-import { genId, isAbortSignal, on, post } from "./utils.ts";
+import { genId, isAbortSignal, on, post, signalReady, waitForReady } from "./utils.ts";
 import type { CallMsg, CancelMsg, Msg, ResultMsg } from "./protocol.ts";
 
 export type * from "./types.ts";
 export type * from "./shared_types.ts";
+export { signalReady, waitForReady } from "./utils.ts";
 
 // expose: register handlers and return them for typeof inference.
 export function expose<H extends HandlerMap>(
@@ -72,6 +73,9 @@ export function expose<H extends HandlerMap>(
     });
     // deno-lint-ignore no-empty
   } catch {}
+
+  // Signal that this endpoint is ready to receive messages
+  signalReady(endpoint);
 
   return handlers;
 }
