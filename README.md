@@ -31,7 +31,10 @@ expose(self as any, handlers);
 ```ts
 import { wrap } from "./mod.ts";
 import type { Receiver } from "./worker.ts";
-const api = wrap<Receiver>(new Worker("./worker.js", { type: "module" }), ["add", "fail"]);
+const api = wrap<Receiver>(new Worker("./worker.js", { type: "module" }), [
+  "add",
+  "fail",
+]);
 const sum = await api.add(1, 2); // 3
 await api.fail(1).catch((e) => console.log(e.message)); // "boom"
 ```

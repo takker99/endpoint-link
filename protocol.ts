@@ -4,7 +4,7 @@ export type CallMsg = { id: string; kind: "call"; name: string; args?: any[] };
 export type ResultMsg = {
   id: string;
   kind: "result";
-// deno-lint-ignore no-explicit-any
+  // deno-lint-ignore no-explicit-any
   result?: any;
   error?: string;
 };

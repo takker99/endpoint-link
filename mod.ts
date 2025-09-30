@@ -77,7 +77,7 @@ export function expose<H extends HandlerMap>(
 export function wrap<H extends HandlerMap>(
   endpoint: Endpoint,
   methodNames?: (keyof H & string)[],
-) {
+): SenderApiFromHandlers<H> {
   type API = SenderApiFromHandlers<H>;
   const replies = new Map<
     string,
