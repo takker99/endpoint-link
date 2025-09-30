@@ -6,14 +6,10 @@ export type Transferable = ArrayBuffer | MessagePort;
 export interface Endpoint {
   // deno-lint-ignore no-explicit-any
   postMessage(message: any, transfer?: Transferable[]): void;
-  addEventListener?(
+  addEventListener(
     type: "message",
     listener: (ev: MessageEvent) => void,
+    options?: AddEventListenerOptions,
   ): void;
-  removeEventListener?(
-    type: "message",
-    listener: (ev: MessageEvent) => void,
-  ): void;
-  onmessage?: ((ev: MessageEvent) => void) | null;
   start?: () => void;
 }
