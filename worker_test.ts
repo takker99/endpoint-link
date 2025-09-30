@@ -1,29 +1,11 @@
 import { wrap } from "./mod.ts";
 import { assertEquals, assertRejects } from "@std/assert";
 
-// Create a worker script dynamically for testing
-function createWorkerScript(code: string): string {
-  const blob = new Blob([code], { type: "application/typescript" });
-  return URL.createObjectURL(blob);
-}
-
 Deno.test("Worker integration without top-level await", async () => {
-  const workerScript = createWorkerScript(`
-    import { expose } from "${import.meta.resolve("./mod.ts")}";
-    
-    const handlers = {
-      add(a: number, b: number, _signal?: AbortSignal) {
-        return a + b;
-      },
-      multiply(a: number, b: number, _signal?: AbortSignal) {
-        return a * b;
-      }
-    };
-    
-    expose(self, handlers);
-  `);
-
-  const worker = new Worker(workerScript, { type: "module" });
+  const worker = new Worker(
+    new URL("./test_workers/basic_worker.ts", import.meta.url).href,
+    { type: "module" },
+  );
 
   try {
     const api = await wrap<{
@@ -38,36 +20,14 @@ Deno.test("Worker integration without top-level await", async () => {
     api.close();
   } finally {
     worker.terminate();
-    URL.revokeObjectURL(workerScript);
   }
 });
 
 Deno.test("Worker integration with simulated top-level await", async () => {
-  const workerScript = createWorkerScript(`
-    import { expose } from "${import.meta.resolve("./mod.ts")}";
-    
-    // Simulate top-level await delay
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    const handlers = {
-      getMessage() {
-        return "Hello from worker with top-level await!";
-      },
-      delayedTask(ms: number, signal?: AbortSignal) {
-        return new Promise((resolve, reject) => {
-          const timer = setTimeout(() => resolve(\`Task completed after \${ms}ms\`), ms);
-          signal?.addEventListener('abort', () => {
-            clearTimeout(timer);
-            reject(new Error('aborted'));
-          });
-        });
-      }
-    };
-    
-    expose(self, handlers);
-  `);
-
-  const worker = new Worker(workerScript, { type: "module" });
+  const worker = new Worker(
+    new URL("./test_workers/delayed_worker.ts", import.meta.url).href,
+    { type: "module" },
+  );
 
   try {
     const api = await wrap<{
@@ -98,17 +58,14 @@ Deno.test("Worker integration with simulated top-level await", async () => {
     api.close();
   } finally {
     worker.terminate();
-    URL.revokeObjectURL(workerScript);
   }
 });
 
 Deno.test("Worker readiness timeout when worker fails to respond", async () => {
-  const workerScript = createWorkerScript(`
-    // Worker that never calls expose, simulating a broken worker
-    console.log("Worker started but never calls expose");
-  `);
-
-  const worker = new Worker(workerScript, { type: "module" });
+  const worker = new Worker(
+    new URL("./test_workers/broken_worker.ts", import.meta.url).href,
+    { type: "module" },
+  );
 
   try {
     // Should timeout since worker never sends ready signal
@@ -119,27 +76,14 @@ Deno.test("Worker readiness timeout when worker fails to respond", async () => {
     );
   } finally {
     worker.terminate();
-    URL.revokeObjectURL(workerScript);
   }
 });
 
 Deno.test("Worker integration with error handling", async () => {
-  const workerScript = createWorkerScript(`
-    import { expose } from "${import.meta.resolve("./mod.ts")}";
-    
-    const handlers = {
-      throwError(message: string, _signal?: AbortSignal) {
-        throw new Error(message);
-      },
-      throwNull(_signal?: AbortSignal) {
-        throw null;
-      }
-    };
-    
-    expose(self, handlers);
-  `);
-
-  const worker = new Worker(workerScript, { type: "module" });
+  const worker = new Worker(
+    new URL("./test_workers/error_worker.ts", import.meta.url).href,
+    { type: "module" },
+  );
 
   try {
     const api = await wrap<{
@@ -164,28 +108,14 @@ Deno.test("Worker integration with error handling", async () => {
     api.close();
   } finally {
     worker.terminate();
-    URL.revokeObjectURL(workerScript);
   }
 });
 
 Deno.test("Worker integration with MessageChannel-style communication", async () => {
-  const workerScript = createWorkerScript(`
-    import { expose } from "${import.meta.resolve("./mod.ts")}";
-    
-    const handlers = {
-      processData(data: { items: number[] }, _signal?: AbortSignal) {
-        return {
-          sum: data.items.reduce((a, b) => a + b, 0),
-          count: data.items.length,
-          average: data.items.reduce((a, b) => a + b, 0) / data.items.length
-        };
-      }
-    };
-    
-    expose(self, handlers);
-  `);
-
-  const worker = new Worker(workerScript, { type: "module" });
+  const worker = new Worker(
+    new URL("./test_workers/data_worker.ts", import.meta.url).href,
+    { type: "module" },
+  );
 
   try {
     const api = await wrap<{
@@ -205,6 +135,5 @@ Deno.test("Worker integration with MessageChannel-style communication", async ()
     api.close();
   } finally {
     worker.terminate();
-    URL.revokeObjectURL(workerScript);
   }
 });
