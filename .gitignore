@@ -1,0 +1,7 @@
+# Coverage reports and temp files
+coverage/
+*.tmp
+.DS_Store
+node_modules/
+dist/
+docs/

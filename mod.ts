@@ -3,6 +3,9 @@ import type { HandlerMap, SenderApiFromHandlers } from "./types.ts";
 import { genId, isAbortSignal, on, post } from "./utils.ts";
 import type { CallMsg, CancelMsg, Msg, ResultMsg } from "./protocol.ts";
 
+export type * from "./types.ts";
+export type * from "./shared_types.ts";
+
 // expose: register handlers and return them for typeof inference.
 export function expose<H extends HandlerMap>(
   endpoint: Endpoint,
