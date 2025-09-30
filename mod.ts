@@ -81,10 +81,27 @@ export function expose<H extends HandlerMap>(
 }
 
 // wrap: typed sender created from typeof handlers.
-export function wrap<H extends HandlerMap>(
+export async function wrap<H extends HandlerMap>(
   endpoint: Endpoint,
   methodNames?: (keyof H & string)[],
-): SenderApiFromHandlers<H> {
+  timeoutMs = 5000,
+): Promise<SenderApiFromHandlers<H>> {
+  // Wait for endpoint to be ready before creating the API
+  await new Promise<void>((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      cleanup();
+      reject(new Error(`Endpoint readiness timeout after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    const cleanup = on(endpoint, (data) => {
+      if (data && data.kind === "ready") {
+        clearTimeout(timeoutId);
+        cleanup();
+        resolve();
+      }
+    });
+  });
+
   type API = SenderApiFromHandlers<H>;
   const replies = new Map<
     string,

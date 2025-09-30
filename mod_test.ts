@@ -1,4 +1,4 @@
-import { expose, waitForReady, wrap } from "./mod.ts";
+import { expose, wrap } from "./mod.ts";
 import type { Endpoint } from "./shared_types.ts";
 import { assertEquals, assertRejects } from "@std/assert";
 
@@ -37,7 +37,7 @@ Deno.test("RPC basic success (value + Promise)", async () => {
     },
   };
   const exposedHandlers = expose(a, handlers);
-  const api = wrap<typeof handlers>(b, ["add", "mul"]);
+  const api = await wrap<typeof handlers>(b, ["add", "mul"]);
   assertEquals(await api.add(1, 2), 3);
   assertEquals(await api.mul(2, 3), 6);
 
@@ -62,7 +62,7 @@ Deno.test("RPC error propagation", async () => {
     },
   };
   const exposedHandlers = expose(a, handlers);
-  const api = wrap<typeof handlers>(b, ["boom"]);
+  const api = await wrap<typeof handlers>(b, ["boom"]);
   await assertRejects(() => api.boom(1), Error, "boom");
 
   // Cleanup
@@ -89,7 +89,7 @@ Deno.test("RPC abort via AbortSignal", async () => {
     },
   };
   const exposedHandlers = expose(a, handlers);
-  const api = wrap<typeof handlers>(b, ["longTask"]);
+  const api = await wrap<typeof handlers>(b, ["longTask"]);
 
   const controller = new AbortController();
   // Immediately abort
@@ -119,7 +119,7 @@ Deno.test("Transferable ArrayBuffer is passed", async () => {
     },
   };
   const exposedHandlers = expose(a, handlers);
-  const api = wrap<typeof handlers>(b, ["len"]);
+  const api = await wrap<typeof handlers>(b, ["len"]);
   const buf = new Uint8Array([1, 2, 3]).buffer;
   const n = await api.len(buf);
   assertEquals(n, 3);
@@ -142,7 +142,7 @@ Deno.test("RPC handles missing handler", async () => {
     },
   };
   const exposedHandlers = expose(a, handlers);
-  const api = wrap<typeof handlers>(b, ["existing"]);
+  const api = await wrap<typeof handlers>(b, ["existing"]);
 
   // Call non-existent method
   await assertRejects(
@@ -173,7 +173,7 @@ Deno.test("RPC handles Promise arguments", async () => {
     },
   };
   const exposedHandlers = expose(a, handlers);
-  const api = wrap<typeof handlers>(b, ["concat"]);
+  const api = await wrap<typeof handlers>(b, ["concat"]);
 
   // Test with Promise arguments
   const result = await api.concat(
@@ -205,7 +205,7 @@ Deno.test("RPC handles active abort signal", async () => {
     },
   };
   const exposedHandlers = expose(a, handlers);
-  const api = wrap<typeof handlers>(b, ["slowTask"]);
+  const api = await wrap<typeof handlers>(b, ["slowTask"]);
 
   const controller = new AbortController();
   controller.abort(); // Abort immediately
@@ -234,7 +234,7 @@ Deno.test("RPC wrap without methodNames creates basic API", async () => {
     },
   };
   const exposedHandlers = expose(a, handlers);
-  const api = wrap<typeof handlers>(b); // No methodNames array
+  const api = await wrap<typeof handlers>(b); // No methodNames array
 
   // Should only have call method, not individual methods
   assertEquals(typeof api.call, "function");
@@ -269,7 +269,7 @@ Deno.test("RPC expose handles cancel messages", async () => {
   };
 
   const exposedHandlers = expose(a, handlers);
-  const api = wrap<typeof handlers>(b, ["slowTask"]);
+  const api = await wrap<typeof handlers>(b, ["slowTask"]);
 
   // Test with an aborted signal
   const controller = new AbortController();
@@ -310,7 +310,7 @@ Deno.test("RPC expose handles malformed data", async () => {
   a.postMessage({ kind: "call", id: "test-id" }); // missing name
 
   // Regular call should still work
-  const api = wrap<typeof handlers>(b, ["test"]);
+  const api = await wrap<typeof handlers>(b, ["test"]);
   assertEquals(await api.test(), "works");
 
   // Cleanup
@@ -334,7 +334,7 @@ Deno.test("RPC expose error when handler throws null/undefined", async () => {
     },
   };
   const exposedHandlers = expose(a, handlers);
-  const api = wrap<typeof handlers>(b, ["throwsNull", "throwsUndefined"]);
+  const api = await wrap<typeof handlers>(b, ["throwsNull", "throwsUndefined"]);
 
   await assertRejects(() => api.throwsNull(), Error, "unknown");
   await assertRejects(() => api.throwsUndefined(), Error, "unknown");
@@ -374,7 +374,7 @@ Deno.test("RPC expose handles legacy cancel message format", async () => {
   a.postMessage({ kind: "cancel" });
 
   // Regular call should still work
-  const api = wrap<typeof handlers>(b, ["test"]);
+  const api = await wrap<typeof handlers>(b, ["test"]);
   assertEquals(await api.test(), "works");
 
   // Cleanup
@@ -399,7 +399,7 @@ Deno.test("RPC expose cleanup after Object.defineProperty fails", async () => {
 
   // This should not throw even if Object.defineProperty fails
   const exposedHandlers = expose(a, handlers);
-  const api = wrap<typeof handlers>(b, ["test"]);
+  const api = await wrap<typeof handlers>(b, ["test"]);
 
   // Regular functionality should still work
   assertEquals(await api.test(), "success");
@@ -422,7 +422,7 @@ Deno.test("RPC wrap handles malformed response messages", async () => {
     },
   };
   const exposedHandlers = expose(a, handlers);
-  const api = wrap<typeof handlers>(b, ["test"]);
+  const api = await wrap<typeof handlers>(b, ["test"]);
 
   // Send malformed response messages
   b.postMessage(null);
@@ -452,7 +452,7 @@ Deno.test("RPC wrap abort signal event listener cleanup", async () => {
     },
   };
   const exposedHandlers = expose(a, handlers);
-  const api = wrap<typeof handlers>(b, ["test"]);
+  const api = await wrap<typeof handlers>(b, ["test"]);
 
   // Create an AbortController and use it
   const controller = new AbortController();
@@ -479,7 +479,7 @@ Deno.test("RPC wrap error during argument preparation", async () => {
     },
   };
   const exposedHandlers = expose(a, handlers);
-  const api = wrap<typeof handlers>(b, ["test"]);
+  const api = await wrap<typeof handlers>(b, ["test"]);
 
   // Create a promise that rejects
   const rejectingPromise = Promise.reject(new Error("promise failed"));
@@ -510,7 +510,7 @@ Deno.test("RPC wrap abort signal removeEventListener error handling", async () =
     },
   };
   const exposedHandlers = expose(a, handlers);
-  const api = wrap<typeof handlers>(b, ["test"]);
+  const api = await wrap<typeof handlers>(b, ["test"]);
 
   // Create a mock AbortSignal that throws when removeEventListener is called
   const mockSignal = {
@@ -563,7 +563,7 @@ Deno.test("RPC expose handler aborted during execution", async () => {
   };
 
   const exposedHandlers = expose(a, handlers);
-  const api = wrap<typeof handlers>(b, ["taskThatThrowsAfterAbort"]);
+  const api = await wrap<typeof handlers>(b, ["taskThatThrowsAfterAbort"]);
 
   // Create an already-aborted signal to force the aborted error path in expose's catch block
   const controller = new AbortController();
@@ -595,7 +595,7 @@ Deno.test("RPC wrap response with unknown reply ID", async () => {
     },
   };
   const exposedHandlers = expose(a, handlers);
-  const api = wrap<typeof handlers>(b, ["test"]);
+  const api = await wrap<typeof handlers>(b, ["test"]);
 
   // Send a result message with an unknown ID - should be ignored
   b.postMessage({
@@ -630,7 +630,7 @@ Deno.test("RPC expose cancel with missing callId", async () => {
   a.postMessage({ kind: "cancel", id: "cancel-msg-id" }); // No idRef
   a.postMessage({ kind: "cancel" }); // No id or idRef
 
-  const api = wrap<typeof handlers>(b, ["test"]);
+  const api = await wrap<typeof handlers>(b, ["test"]);
   assertEquals(await api.test(), "works");
 
   // Cleanup
@@ -643,7 +643,7 @@ Deno.test("RPC expose cancel with missing callId", async () => {
   closePorts(a, b);
 });
 
-Deno.test("RPC expose sends ready signal", async () => {
+Deno.test("RPC expose sends ready signal (integrated with wrap)", async () => {
   const [a, b] = memoryPair();
   const handlers = {
     test() {
@@ -651,16 +651,17 @@ Deno.test("RPC expose sends ready signal", async () => {
     },
   };
 
-  // Wait for ready signal - should resolve when expose is called
-  const readyPromise = waitForReady(b, 1000);
-
   // Expose handlers - this should send ready signal
   const exposedHandlers = expose(a, handlers);
 
-  // Ready signal should have been received
-  await readyPromise;
+  // wrap should wait for ready signal automatically
+  const api = await wrap<typeof handlers>(b, ["test"], 1000);
+
+  // If we get here, the ready signal was received
+  assertEquals(await api.test(), "works");
 
   // Cleanup
+  api.close();
   // deno-lint-ignore no-explicit-any
   if ((exposedHandlers as any).__endpoint_link_close) {
     // deno-lint-ignore no-explicit-any
@@ -677,8 +678,8 @@ Deno.test("RPC readiness protocol with delayed expose", async () => {
     },
   };
 
-  // Start waiting for ready signal
-  const readyPromise = waitForReady(b, 1000);
+  // Start wrap which will wait for ready signal
+  const wrapPromise = wrap<typeof handlers>(b, ["test"], 1000);
 
   // Expose handlers after a delay
   setTimeout(() => {
@@ -686,10 +687,9 @@ Deno.test("RPC readiness protocol with delayed expose", async () => {
   }, 50);
 
   // Should resolve when expose sends ready signal
-  await readyPromise;
+  const api = await wrapPromise;
 
-  // Now we can safely create API and use it
-  const api = wrap<typeof handlers>(b, ["test"]);
+  // Now we can safely use the API
   assertEquals(await api.test(), "success");
 
   // Cleanup

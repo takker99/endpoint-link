@@ -1,4 +1,4 @@
-import { waitForReady, wrap } from "./mod.ts";
+import { wrap } from "./mod.ts";
 import { assertEquals, assertRejects } from "@std/assert";
 
 // Create a worker script dynamically for testing
@@ -26,13 +26,10 @@ Deno.test("Worker integration without top-level await", async () => {
   const worker = new Worker(workerScript, { type: "module" });
 
   try {
-    // Wait for worker to be ready
-    await waitForReady(worker, 2000);
-
-    const api = wrap<{
+    const api = await wrap<{
       add(a: number, b: number, signal?: AbortSignal): number;
       multiply(a: number, b: number, signal?: AbortSignal): number;
-    }>(worker, ["add", "multiply"]);
+    }>(worker, ["add", "multiply"], 2000);
 
     // Test basic functionality
     assertEquals(await api.add(1, 2), 3);
@@ -73,13 +70,10 @@ Deno.test("Worker integration with simulated top-level await", async () => {
   const worker = new Worker(workerScript, { type: "module" });
 
   try {
-    // Wait for worker to be ready (should handle the top-level await delay)
-    await waitForReady(worker, 3000);
-
-    const api = wrap<{
+    const api = await wrap<{
       getMessage(signal?: AbortSignal): string;
       delayedTask(ms: number, signal?: AbortSignal): Promise<string>;
-    }>(worker, ["getMessage", "delayedTask"]);
+    }>(worker, ["getMessage", "delayedTask"], 3000);
 
     // Test basic functionality
     assertEquals(
@@ -119,7 +113,7 @@ Deno.test("Worker readiness timeout when worker fails to respond", async () => {
   try {
     // Should timeout since worker never sends ready signal
     await assertRejects(
-      () => waitForReady(worker, 500),
+      () => wrap<Record<PropertyKey, never>>(worker, [], 500),
       Error,
       "Endpoint readiness timeout after 500ms",
     );
@@ -148,12 +142,10 @@ Deno.test("Worker integration with error handling", async () => {
   const worker = new Worker(workerScript, { type: "module" });
 
   try {
-    await waitForReady(worker, 2000);
-
-    const api = wrap<{
+    const api = await wrap<{
       throwError(message: string, signal?: AbortSignal): never;
       throwNull(signal?: AbortSignal): never;
-    }>(worker, ["throwError", "throwNull"]);
+    }>(worker, ["throwError", "throwNull"], 2000);
 
     // Test error propagation
     await assertRejects(
@@ -196,15 +188,13 @@ Deno.test("Worker integration with MessageChannel-style communication", async ()
   const worker = new Worker(workerScript, { type: "module" });
 
   try {
-    await waitForReady(worker, 2000);
-
-    const api = wrap<{
+    const api = await wrap<{
       processData(data: { items: number[] }, signal?: AbortSignal): {
         sum: number;
         count: number;
         average: number;
       };
-    }>(worker, ["processData"]);
+    }>(worker, ["processData"], 2000);
 
     const result = await api.processData({ items: [1, 2, 3, 4, 5] });
 
