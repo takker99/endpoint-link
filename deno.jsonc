@@ -19,6 +19,7 @@
       "command": "deno fmt --check && deno lint && deno publish --dry-run",
       "dependencies": [
         "type-check",
+        "lint:doc",
         "test"
       ]
     },
@@ -27,9 +28,11 @@
       "command": "deno fmt && deno lint --fix && deno publish --dry-run --allow-dirty",
       "dependencies": [
         "type-check",
+        "lint:doc",
         "test"
       ]
     },
+    "lint:doc": "deno doc --lint mod.ts",
     "test": "deno test --allow-read=./ --doc --parallel --shuffle --no-check --coverage",
     "type-check": "deno check --remote --doc **/*.ts && deno check --remote --doc-only **/*.md",
     "update": "deno outdated --update"
