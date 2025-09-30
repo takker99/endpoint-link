@@ -1,4 +1,4 @@
-import { expose, wrap, waitForReady } from "./mod.ts";
+import { expose, waitForReady, wrap } from "./mod.ts";
 import type { Endpoint } from "./shared_types.ts";
 import { assertEquals, assertRejects } from "@std/assert";
 
@@ -279,7 +279,7 @@ Deno.test("RPC expose handles cancel messages", async () => {
   await assertRejects(
     () => api.slowTask(100, controller.signal),
     Error,
-    "aborted"
+    "aborted",
   );
 
   // Cleanup
@@ -456,7 +456,7 @@ Deno.test("RPC wrap abort signal event listener cleanup", async () => {
 
   // Create an AbortController and use it
   const controller = new AbortController();
-  
+
   // Normal call should work fine
   const result = await api.test(controller.signal);
   assertEquals(result, "success");
@@ -653,10 +653,10 @@ Deno.test("RPC expose sends ready signal", async () => {
 
   // Wait for ready signal - should resolve when expose is called
   const readyPromise = waitForReady(b, 1000);
-  
+
   // Expose handlers - this should send ready signal
   const exposedHandlers = expose(a, handlers);
-  
+
   // Ready signal should have been received
   await readyPromise;
 
@@ -679,12 +679,12 @@ Deno.test("RPC readiness protocol with delayed expose", async () => {
 
   // Start waiting for ready signal
   const readyPromise = waitForReady(b, 1000);
-  
+
   // Expose handlers after a delay
   setTimeout(() => {
     expose(a, handlers);
   }, 50);
-  
+
   // Should resolve when expose sends ready signal
   await readyPromise;
 

@@ -1,4 +1,10 @@
-import { genId, isAbortSignal, post, signalReady, waitForReady } from "./utils.ts";
+import {
+  genId,
+  isAbortSignal,
+  post,
+  signalReady,
+  waitForReady,
+} from "./utils.ts";
 import type { Endpoint } from "./shared_types.ts";
 import { assertEquals, assertRejects } from "@std/assert";
 
@@ -103,7 +109,7 @@ Deno.test("utils.genId fallback when crypto fails", () => {
 
 Deno.test("utils.signalReady sends ready message", async () => {
   const [a, b] = memoryPair();
-  
+
   // deno-lint-ignore no-explicit-any
   let receivedMessage: any;
   const cleanup = (() => {
@@ -147,7 +153,7 @@ Deno.test("utils.waitForReady times out when no ready message", async () => {
   await assertRejects(
     () => waitForReady(b, 50),
     Error,
-    "Endpoint readiness timeout after 50ms"
+    "Endpoint readiness timeout after 50ms",
   );
 
   closePorts(a, b);

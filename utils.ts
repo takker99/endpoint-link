@@ -51,7 +51,10 @@ export function signalReady(endpoint: Endpoint) {
 }
 
 // Wait for an endpoint to signal it's ready before making calls
-export function waitForReady(endpoint: Endpoint, timeoutMs = 5000): Promise<void> {
+export function waitForReady(
+  endpoint: Endpoint,
+  timeoutMs = 5000,
+): Promise<void> {
   return new Promise((resolve, reject) => {
     const timeoutId = setTimeout(() => {
       cleanup();

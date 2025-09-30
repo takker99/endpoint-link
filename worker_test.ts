@@ -1,4 +1,4 @@
-import { expose, wrap, waitForReady } from "./mod.ts";
+import { waitForReady, wrap } from "./mod.ts";
 import { assertEquals, assertRejects } from "@std/assert";
 
 // Create a worker script dynamically for testing
@@ -24,11 +24,11 @@ Deno.test("Worker integration without top-level await", async () => {
   `);
 
   const worker = new Worker(workerScript, { type: "module" });
-  
+
   try {
     // Wait for worker to be ready
     await waitForReady(worker, 2000);
-    
+
     const api = wrap<{
       add(a: number, b: number, signal?: AbortSignal): number;
       multiply(a: number, b: number, signal?: AbortSignal): number;
@@ -37,7 +37,7 @@ Deno.test("Worker integration without top-level await", async () => {
     // Test basic functionality
     assertEquals(await api.add(1, 2), 3);
     assertEquals(await api.multiply(3, 4), 12);
-    
+
     api.close();
   } finally {
     worker.terminate();
@@ -71,33 +71,36 @@ Deno.test("Worker integration with simulated top-level await", async () => {
   `);
 
   const worker = new Worker(workerScript, { type: "module" });
-  
+
   try {
     // Wait for worker to be ready (should handle the top-level await delay)
     await waitForReady(worker, 3000);
-    
+
     const api = wrap<{
       getMessage(signal?: AbortSignal): string;
       delayedTask(ms: number, signal?: AbortSignal): Promise<string>;
     }>(worker, ["getMessage", "delayedTask"]);
 
     // Test basic functionality
-    assertEquals(await api.getMessage(), "Hello from worker with top-level await!");
-    
+    assertEquals(
+      await api.getMessage(),
+      "Hello from worker with top-level await!",
+    );
+
     // Test delayed task
     assertEquals(await api.delayedTask(50), "Task completed after 50ms");
-    
+
     // Test cancellation
     const controller = new AbortController();
     const taskPromise = api.delayedTask(200, controller.signal);
     setTimeout(() => controller.abort(), 50);
-    
+
     await assertRejects(
       () => taskPromise,
       Error,
-      "aborted"
+      "aborted",
     );
-    
+
     api.close();
   } finally {
     worker.terminate();
@@ -112,13 +115,13 @@ Deno.test("Worker readiness timeout when worker fails to respond", async () => {
   `);
 
   const worker = new Worker(workerScript, { type: "module" });
-  
+
   try {
     // Should timeout since worker never sends ready signal
     await assertRejects(
       () => waitForReady(worker, 500),
       Error,
-      "Endpoint readiness timeout after 500ms"
+      "Endpoint readiness timeout after 500ms",
     );
   } finally {
     worker.terminate();
@@ -143,10 +146,10 @@ Deno.test("Worker integration with error handling", async () => {
   `);
 
   const worker = new Worker(workerScript, { type: "module" });
-  
+
   try {
     await waitForReady(worker, 2000);
-    
+
     const api = wrap<{
       throwError(message: string, signal?: AbortSignal): never;
       throwNull(signal?: AbortSignal): never;
@@ -156,16 +159,16 @@ Deno.test("Worker integration with error handling", async () => {
     await assertRejects(
       () => api.throwError("Test error"),
       Error,
-      "Test error"
+      "Test error",
     );
-    
+
     // Test null error handling
     await assertRejects(
       () => api.throwNull(),
       Error,
-      "unknown"
+      "unknown",
     );
-    
+
     api.close();
   } finally {
     worker.terminate();
@@ -191,24 +194,24 @@ Deno.test("Worker integration with MessageChannel-style communication", async ()
   `);
 
   const worker = new Worker(workerScript, { type: "module" });
-  
+
   try {
     await waitForReady(worker, 2000);
-    
+
     const api = wrap<{
       processData(data: { items: number[] }, signal?: AbortSignal): {
         sum: number;
-        count: number; 
+        count: number;
         average: number;
       };
     }>(worker, ["processData"]);
 
     const result = await api.processData({ items: [1, 2, 3, 4, 5] });
-    
+
     assertEquals(result.sum, 15);
     assertEquals(result.count, 5);
     assertEquals(result.average, 3);
-    
+
     api.close();
   } finally {
     worker.terminate();

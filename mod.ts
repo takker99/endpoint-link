@@ -1,6 +1,6 @@
 import type { Endpoint } from "./shared_types.ts";
 import type { HandlerMap, SenderApiFromHandlers } from "./types.ts";
-import { genId, isAbortSignal, on, post, signalReady, waitForReady } from "./utils.ts";
+import { genId, isAbortSignal, on, post, signalReady } from "./utils.ts";
 import type { CallMsg, CancelMsg, Msg, ResultMsg } from "./protocol.ts";
 
 export type * from "./types.ts";
