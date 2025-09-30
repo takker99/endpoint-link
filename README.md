@@ -15,26 +15,32 @@ Lightweight RPC and streaming for MessagePort-like Endpoints (WebWorker-first)
 Quick example (Phase 1: non-stream)
 
 ```ts
+// worker.ts
 import { expose } from "./mod.ts";
+
 const handlers = {
   async add(a: number, b: number, _signal?: AbortSignal) {
     return a + b;
   },
-  fail(_n: number, _signal?: AbortSignal) {
+  fail(_n: number, _signal?: AbortSignal): never {
     throw new Error("boom");
   },
 };
 export type Receiver = typeof handlers;
 expose(self as any, handlers);
-```
 
-```ts
+// main.ts
 import { wrap } from "./mod.ts";
-import type { Receiver } from "./worker.ts";
-const api = wrap<Receiver>(new Worker("./worker.js", { type: "module" }), [
+//import type { Receiver } from "./worker.ts";
+
+const api = wrap<Receiver>(new Worker("./worker.ts", { type: "module" }), [
   "add",
   "fail",
 ]);
 const sum = await api.add(1, 2); // 3
-await api.fail(1).catch((e) => console.log(e.message)); // "boom"
+try {
+  await api.fail(1);
+} catch (e) {
+  console.log((e as unknown as Error).message); // "boom"
+}
 ```

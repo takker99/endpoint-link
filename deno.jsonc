@@ -21,7 +21,6 @@
         "test"
       ]
     },
-    "coverage": "deno test --allow-read=./ --parallel --shuffle --coverage --no-check && deno coverage ./coverage --lcov > coverage.lcov",
     "doc": "deno doc --html mod.ts",
     "fix": {
       "command": "deno fmt && deno lint --fix && deno publish --dry-run --allow-dirty",
@@ -30,8 +29,8 @@
         "test"
       ]
     },
-    "test": "deno test --allow-read=./ --doc --parallel --shuffle --no-check --permit-no-files",
-    "type-check": "deno check --remote **/*.ts",
+    "test": "deno test --allow-read=./ --doc --parallel --shuffle --no-check --coverage",
+    "type-check": "deno check --remote --doc **/*.ts && deno check --remote --doc-only **/*.md",
     "update": "deno outdated --update"
   },
   "test": {

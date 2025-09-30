@@ -15,7 +15,6 @@ jobs:
         with:
           deno-version: ${{ env.DENO_VERSION }}
       - run: deno task check
-      - run: deno task coverage
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         if: github.event_name == 'push'

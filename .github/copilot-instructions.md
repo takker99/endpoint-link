@@ -154,7 +154,6 @@ Security and safety:
 
 - Run tests and generate coverage:
   - `deno task test`
-  - Produces `coverage.lcov` via `deno coverage cov --lcov > coverage.lcov`
 - Lint/format:
   - `deno fmt`
   - `deno lint`
