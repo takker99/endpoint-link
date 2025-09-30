@@ -1,5 +1,5 @@
 // deno-coverage-ignore-file
-import { expose } from "../mod.ts";
+import { expose } from "../expose.ts";
 
 const handlers = {
   add(a: number, b: number, _signal?: AbortSignal) {

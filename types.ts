@@ -2,8 +2,6 @@
 // Sender->Receiver: sender may pass T | Promise<T>; receiver receives T
 // Receiver->Sender: receiver may return T | Promise<T>; sender receives Promise<T>
 
-import type { Transferable } from "./shared_types.ts";
-
 /** Basic primitive types that can be sent over MessagePort. */
 export type Primitive = string | number | boolean | null | undefined;
 
