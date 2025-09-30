@@ -2,6 +2,8 @@
 // Sender->Receiver: sender may pass T | Promise<T>; receiver receives T
 // Receiver->Sender: receiver may return T | Promise<T>; sender receives Promise<T>
 
+import type { Transferable } from "./shared_types.ts";
+
 export type Primitive = string | number | boolean | null | undefined;
 
 export type PlainObject = { [key: string]: Postable };
