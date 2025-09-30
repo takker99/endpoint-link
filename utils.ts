@@ -45,12 +45,18 @@ export function genId() {
   }
 }
 
-// Signal that this endpoint is ready to receive messages
+/** Signal that this endpoint is ready to receive messages. */
 export function signalReady(endpoint: Endpoint) {
   post(endpoint, { kind: "ready" } as ReadyMsg);
 }
 
-// Wait for an endpoint to signal it's ready before making calls
+/**
+ * Wait for an endpoint to signal it's ready before making calls.
+ *
+ * @param endpoint The endpoint to wait for readiness signal from.
+ * @param timeoutMs Timeout in milliseconds before rejecting. Defaults to 5000ms.
+ * @returns Promise that resolves when endpoint signals ready or rejects on timeout.
+ */
 export function waitForReady(
   endpoint: Endpoint,
   timeoutMs = 5000,

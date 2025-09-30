@@ -14,7 +14,14 @@ export type * from "./types.ts";
 export type * from "./shared_types.ts";
 export { signalReady, waitForReady } from "./utils.ts";
 
-// expose: register handlers and return them for typeof inference.
+/**
+ * Register handlers on an endpoint and return them for typeof inference.
+ * Sets up message handling for RPC calls and signals readiness.
+ *
+ * @param endpoint The endpoint to register handlers on.
+ * @param handlers Map of handler functions to expose.
+ * @returns The same handlers object for typeof inference.
+ */
 export function expose<H extends HandlerMap>(
   endpoint: Endpoint,
   handlers: H,
@@ -87,7 +94,15 @@ export function expose<H extends HandlerMap>(
   return handlers;
 }
 
-// wrap: typed sender created from typeof handlers.
+/**
+ * Create a typed sender API from handler definitions.
+ * Waits for endpoint readiness before returning the API.
+ *
+ * @param endpoint The endpoint to communicate through.
+ * @param methodNames Optional array of method names to add as direct properties.
+ * @param timeoutMs Timeout for waiting for endpoint readiness. Defaults to 5000ms.
+ * @returns Promise resolving to a typed sender API with call method and optional direct methods.
+ */
 export async function wrap<H extends HandlerMap>(
   endpoint: Endpoint,
   methodNames?: (keyof H & string)[],
