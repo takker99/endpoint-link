@@ -1,4 +1,4 @@
-import { wrap } from "./mod.ts";
+import { wrap } from "./wrap.ts";
 import { assertEquals, assertRejects } from "@std/assert";
 
 Deno.test("Worker integration without top-level await", async () => {

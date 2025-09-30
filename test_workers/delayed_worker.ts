@@ -1,5 +1,5 @@
 // deno-coverage-ignore-file
-import { expose } from "../mod.ts";
+import { expose } from "../expose.ts";
 
 // Simulate top-level await delay
 await new Promise((resolve) => setTimeout(resolve, 100));

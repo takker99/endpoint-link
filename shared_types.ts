@@ -1,8 +1,5 @@
 // Endpoint abstraction (MessagePort-like) and Transferable set.
 
-/** Phase 1 Transferable union type for Web standards (Deno-compatible subset). */
-export type Transferable = ArrayBuffer | MessagePort;
-
 /** MessagePort-like interface for cross-context communication. */
 export interface Endpoint {
   /** Send a message with optional transferable objects. */
