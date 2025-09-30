@@ -37,7 +37,8 @@
   "test": {
     "exclude": [
       "README.md",
-      ".github/**/*.md"
+      ".github/**/*.md",
+      "knowledge/**/*.md"
     ]
   },
   "version": "0.0.0"
