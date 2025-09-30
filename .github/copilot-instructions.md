@@ -54,7 +54,7 @@ const handlers = {
 };
 declare const endpoint: Endpoint;
 
-const api = wrap<typeof handlers>(endpoint, ["method"]);
+const api = await wrap<typeof handlers>(endpoint, ["method"]);
 await api.method(1, "test"); // or api.call("method", 1, "test")
 ```
 

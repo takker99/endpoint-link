@@ -33,10 +33,13 @@ expose(self as any, handlers);
 import { wrap } from "@takker/endpoint-link";
 //import type { Receiver } from "./worker.ts";
 
-const api = wrap<Receiver>(new Worker("./worker.ts", { type: "module" }), [
-  "add",
-  "fail",
-]);
+const api = await wrap<Receiver>(
+  new Worker("./worker.ts", { type: "module" }),
+  [
+    "add",
+    "fail",
+  ],
+);
 const sum = await api.add(1, 2); // 3
 try {
   await api.fail(1);
