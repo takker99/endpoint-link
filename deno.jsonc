@@ -1,0 +1,43 @@
+{
+  "exports": "./mod.ts",
+  "imports": {
+    "@std/assert": "jsr:@std/assert@^1.0.14"
+  },
+  "license": "MIT",
+  "lint": {
+    "rules": {
+      "tags": [
+        "recommended",
+        "jsr"
+      ]
+    }
+  },
+  "name": "@takker/endpoint-link",
+  "tasks": {
+    "check": {
+      "command": "deno fmt --check && deno lint && deno publish --dry-run",
+      "dependencies": [
+        "type-check",
+        "test"
+      ]
+    },
+    "coverage": "deno test --allow-read=./ --parallel --shuffle --coverage --no-check && deno coverage ./coverage --lcov > coverage.lcov",
+    "doc": "deno doc --html mod.ts",
+    "fix": {
+      "command": "deno fmt && deno lint --fix && deno publish --dry-run --allow-dirty",
+      "dependencies": [
+        "type-check",
+        "test"
+      ]
+    },
+    "test": "deno test --allow-read=./ --doc --parallel --shuffle --no-check --permit-no-files",
+    "type-check": "deno check --remote **/*.ts",
+    "update": "deno outdated --update"
+  },
+  "test": {
+    "exclude": [
+      "README.md"
+    ]
+  },
+  "version": "0.0.0"
+}
