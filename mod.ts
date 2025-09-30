@@ -12,7 +12,6 @@ import type { CallMsg, CancelMsg, Msg, ResultMsg } from "./protocol.ts";
 
 export type * from "./types.ts";
 export type * from "./shared_types.ts";
-export { signalReady, waitForReady } from "./utils.ts";
 
 /**
  * Register handlers on an endpoint and return them for typeof inference.
