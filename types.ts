@@ -60,6 +60,7 @@ export type NormalizeReturn<R> = R extends Promise<any> ? R : Promise<R>;
  * Sender API type derived from a HandlerMap.
  * Provides both a generic `call` method and typed methods for each handler.
  * All methods return promises and support passing promises as arguments.
+ * Implements Disposable for resource cleanup with `using` syntax.
  */
 export type SenderApiFromHandlers<H extends HandlerMap> =
   & {
@@ -73,4 +74,11 @@ export type SenderApiFromHandlers<H extends HandlerMap> =
     [K in keyof H & string]: (
       ...args: SenderArgsFromReceiverParams<WithoutAbort<Parameters<H[K]>>>
     ) => NormalizeReturn<ReturnType<H[K]>>;
-  };
+  }
+  & Disposable;
+
+/**
+ * Disposable object returned by expose() for resource cleanup.
+ * Implements Disposable for use with `using` syntax.
+ */
+export type ExposeDisposable = Disposable;

@@ -1,6 +1,6 @@
 import { wrap } from "./wrap.ts";
 import { expose } from "./expose.ts";
-import { assertEquals, assertRejects } from "@std/assert";
+import { assertEquals, assertRejects, assertThrows } from "@std/assert";
 import { closePorts, memoryPair } from "./test_utils.ts";
 
 Deno.test("RPC basic success (value + Promise)", async () => {
@@ -13,7 +13,7 @@ Deno.test("RPC basic success (value + Promise)", async () => {
       return Promise.resolve(a * b);
     },
   };
-  const exposedHandlers = expose(a, handlers);
+  using _disposable = expose(a, handlers);
   const api = await wrap<typeof handlers>(b, ["add", "mul"]);
   assertEquals(await api.add(1, 2), 3);
   assertEquals(await api.mul(2, 3), 6);
@@ -23,11 +23,6 @@ Deno.test("RPC basic success (value + Promise)", async () => {
 
   // Cleanup
   api.close();
-  // deno-lint-ignore no-explicit-any
-  if ((exposedHandlers as any).__endpoint_link_close) {
-    // deno-lint-ignore no-explicit-any
-    (exposedHandlers as any).__endpoint_link_close();
-  }
   closePorts(a, b);
 });
 
@@ -38,17 +33,12 @@ Deno.test("RPC error propagation", async () => {
       throw new Error("boom");
     },
   };
-  const exposedHandlers = expose(a, handlers);
+  using _disposable = expose(a, handlers);
   const api = await wrap<typeof handlers>(b, ["boom"]);
   await assertRejects(() => api.boom(1), Error, "boom");
 
   // Cleanup
   api.close();
-  // deno-lint-ignore no-explicit-any
-  if ((exposedHandlers as any).__endpoint_link_close) {
-    // deno-lint-ignore no-explicit-any
-    (exposedHandlers as any).__endpoint_link_close();
-  }
   closePorts(a, b);
 });
 
@@ -65,7 +55,7 @@ Deno.test("RPC abort via AbortSignal", async () => {
       return Promise.resolve("done");
     },
   };
-  const exposedHandlers = expose(a, handlers);
+  using _disposable = expose(a, handlers);
   const api = await wrap<typeof handlers>(b, ["longTask"]);
 
   const controller = new AbortController();
@@ -80,11 +70,6 @@ Deno.test("RPC abort via AbortSignal", async () => {
 
   // Cleanup
   api.close();
-  // deno-lint-ignore no-explicit-any
-  if ((exposedHandlers as any).__endpoint_link_close) {
-    // deno-lint-ignore no-explicit-any
-    (exposedHandlers as any).__endpoint_link_close();
-  }
   closePorts(a, b);
 });
 
@@ -95,7 +80,7 @@ Deno.test("Transferable ArrayBuffer is passed", async () => {
       return (buf.byteLength ?? 0) as number;
     },
   };
-  const exposedHandlers = expose(a, handlers);
+  using _disposable = expose(a, handlers);
   const api = await wrap<typeof handlers>(b, ["len"]);
   const buf = new Uint8Array([1, 2, 3]).buffer;
   const n = await api.len(buf);
@@ -103,11 +88,6 @@ Deno.test("Transferable ArrayBuffer is passed", async () => {
 
   // Cleanup
   api.close();
-  // deno-lint-ignore no-explicit-any
-  if ((exposedHandlers as any).__endpoint_link_close) {
-    // deno-lint-ignore no-explicit-any
-    (exposedHandlers as any).__endpoint_link_close();
-  }
   closePorts(a, b);
 });
 
@@ -118,7 +98,7 @@ Deno.test("RPC handles missing handler", async () => {
       return "exists";
     },
   };
-  const exposedHandlers = expose(a, handlers);
+  using _disposable = expose(a, handlers);
   const api = await wrap<typeof handlers>(b, ["existing"]);
 
   // Call non-existent method
@@ -134,11 +114,6 @@ Deno.test("RPC handles missing handler", async () => {
 
   // Cleanup
   api.close();
-  // deno-lint-ignore no-explicit-any
-  if ((exposedHandlers as any).__endpoint_link_close) {
-    // deno-lint-ignore no-explicit-any
-    (exposedHandlers as any).__endpoint_link_close();
-  }
   closePorts(a, b);
 });
 
@@ -149,7 +124,7 @@ Deno.test("RPC handles Promise arguments", async () => {
       return str1 + str2;
     },
   };
-  const exposedHandlers = expose(a, handlers);
+  using _disposable = expose(a, handlers);
   const api = await wrap<typeof handlers>(b, ["concat"]);
 
   // Test with Promise arguments
@@ -161,11 +136,6 @@ Deno.test("RPC handles Promise arguments", async () => {
 
   // Cleanup
   api.close();
-  // deno-lint-ignore no-explicit-any
-  if ((exposedHandlers as any).__endpoint_link_close) {
-    // deno-lint-ignore no-explicit-any
-    (exposedHandlers as any).__endpoint_link_close();
-  }
   closePorts(a, b);
 });
 
@@ -181,7 +151,7 @@ Deno.test("RPC handles active abort signal", async () => {
       return Promise.resolve("done");
     },
   };
-  const exposedHandlers = expose(a, handlers);
+  using _disposable = expose(a, handlers);
   const api = await wrap<typeof handlers>(b, ["slowTask"]);
 
   const controller = new AbortController();
@@ -195,11 +165,6 @@ Deno.test("RPC handles active abort signal", async () => {
 
   // Cleanup
   api.close();
-  // deno-lint-ignore no-explicit-any
-  if ((exposedHandlers as any).__endpoint_link_close) {
-    // deno-lint-ignore no-explicit-any
-    (exposedHandlers as any).__endpoint_link_close();
-  }
   closePorts(a, b);
 });
 
@@ -210,7 +175,7 @@ Deno.test("RPC wrap without methodNames creates basic API", async () => {
       return "works";
     },
   };
-  const exposedHandlers = expose(a, handlers);
+  using _disposable = expose(a, handlers);
   const api = await wrap<typeof handlers>(b); // No methodNames array
 
   // Should only have call method, not individual methods
@@ -223,11 +188,6 @@ Deno.test("RPC wrap without methodNames creates basic API", async () => {
 
   // Cleanup
   api.close();
-  // deno-lint-ignore no-explicit-any
-  if ((exposedHandlers as any).__endpoint_link_close) {
-    // deno-lint-ignore no-explicit-any
-    (exposedHandlers as any).__endpoint_link_close();
-  }
   closePorts(a, b);
 });
 
@@ -245,7 +205,7 @@ Deno.test("RPC expose handles cancel messages", async () => {
     },
   };
 
-  const exposedHandlers = expose(a, handlers);
+  using _disposable = expose(a, handlers);
   const api = await wrap<typeof handlers>(b, ["slowTask"]);
 
   // Test with an aborted signal
@@ -261,11 +221,6 @@ Deno.test("RPC expose handles cancel messages", async () => {
 
   // Cleanup
   api.close();
-  // deno-lint-ignore no-explicit-any
-  if ((exposedHandlers as any).__endpoint_link_close) {
-    // deno-lint-ignore no-explicit-any
-    (exposedHandlers as any).__endpoint_link_close();
-  }
   closePorts(a, b);
 });
 
@@ -276,7 +231,7 @@ Deno.test("RPC expose handles malformed data", async () => {
       return "works";
     },
   };
-  const exposedHandlers = expose(a, handlers);
+  using _disposable = expose(a, handlers);
 
   // Send malformed data
   a.postMessage(null);
@@ -292,11 +247,6 @@ Deno.test("RPC expose handles malformed data", async () => {
 
   // Cleanup
   api.close();
-  // deno-lint-ignore no-explicit-any
-  if ((exposedHandlers as any).__endpoint_link_close) {
-    // deno-lint-ignore no-explicit-any
-    (exposedHandlers as any).__endpoint_link_close();
-  }
   closePorts(a, b);
 });
 
@@ -310,7 +260,7 @@ Deno.test("RPC expose error when handler throws null/undefined", async () => {
       throw undefined;
     },
   };
-  const exposedHandlers = expose(a, handlers);
+  using _disposable = expose(a, handlers);
   const api = await wrap<typeof handlers>(b, ["throwsNull", "throwsUndefined"]);
 
   await assertRejects(() => api.throwsNull(), Error, "unknown");
@@ -318,11 +268,6 @@ Deno.test("RPC expose error when handler throws null/undefined", async () => {
 
   // Cleanup
   api.close();
-  // deno-lint-ignore no-explicit-any
-  if ((exposedHandlers as any).__endpoint_link_close) {
-    // deno-lint-ignore no-explicit-any
-    (exposedHandlers as any).__endpoint_link_close();
-  }
   closePorts(a, b);
 });
 
@@ -335,7 +280,7 @@ Deno.test("RPC expose handles legacy cancel message format", async () => {
       return "works";
     },
   };
-  const exposedHandlers = expose(a, handlers);
+  using _disposable = expose(a, handlers);
 
   // Send a legacy cancel message with just 'id' (no idRef)
   a.postMessage({ id: "some-call-id", kind: "cancel" });
@@ -356,38 +301,28 @@ Deno.test("RPC expose handles legacy cancel message format", async () => {
 
   // Cleanup
   api.close();
-  // deno-lint-ignore no-explicit-any
-  if ((exposedHandlers as any).__endpoint_link_close) {
-    // deno-lint-ignore no-explicit-any
-    (exposedHandlers as any).__endpoint_link_close();
-  }
   closePorts(a, b);
 });
 
-Deno.test("RPC expose cleanup after Object.defineProperty fails", async () => {
+Deno.test("RPC expose works with frozen handlers object", async () => {
   const [a, b] = memoryPair();
 
-  // Create a handlers object that can't have properties added
+  // Create a handlers object that is frozen
   const handlers = Object.freeze({
     test() {
       return "success";
     },
   });
 
-  // This should not throw even if Object.defineProperty fails
-  const exposedHandlers = expose(a, handlers);
+  // This should work without issues
+  using _disposable = expose(a, handlers);
   const api = await wrap<typeof handlers>(b, ["test"]);
 
   // Regular functionality should still work
   assertEquals(await api.test(), "success");
 
-  // Cleanup (the __endpoint_link_close property won't exist due to the freeze)
+  // Cleanup
   api.close();
-  // deno-lint-ignore no-explicit-any
-  if ((exposedHandlers as any).__endpoint_link_close) {
-    // deno-lint-ignore no-explicit-any
-    (exposedHandlers as any).__endpoint_link_close();
-  }
   closePorts(a, b);
 });
 
@@ -398,7 +333,7 @@ Deno.test("RPC wrap handles malformed response messages", async () => {
       return "works";
     },
   };
-  const exposedHandlers = expose(a, handlers);
+  using _disposable = expose(a, handlers);
   const api = await wrap<typeof handlers>(b, ["test"]);
 
   // Send malformed response messages
@@ -413,11 +348,6 @@ Deno.test("RPC wrap handles malformed response messages", async () => {
 
   // Cleanup
   api.close();
-  // deno-lint-ignore no-explicit-any
-  if ((exposedHandlers as any).__endpoint_link_close) {
-    // deno-lint-ignore no-explicit-any
-    (exposedHandlers as any).__endpoint_link_close();
-  }
   closePorts(a, b);
 });
 
@@ -428,7 +358,7 @@ Deno.test("RPC wrap abort signal event listener cleanup", async () => {
       return "success";
     },
   };
-  const exposedHandlers = expose(a, handlers);
+  using _disposable = expose(a, handlers);
   const api = await wrap<typeof handlers>(b, ["test"]);
 
   // Create an AbortController and use it
@@ -440,11 +370,6 @@ Deno.test("RPC wrap abort signal event listener cleanup", async () => {
 
   // Cleanup
   api.close();
-  // deno-lint-ignore no-explicit-any
-  if ((exposedHandlers as any).__endpoint_link_close) {
-    // deno-lint-ignore no-explicit-any
-    (exposedHandlers as any).__endpoint_link_close();
-  }
   closePorts(a, b);
 });
 
@@ -455,7 +380,7 @@ Deno.test("RPC wrap error during argument preparation", async () => {
       return "should not reach";
     },
   };
-  const exposedHandlers = expose(a, handlers);
+  using _disposable = expose(a, handlers);
   const api = await wrap<typeof handlers>(b, ["test"]);
 
   // Create a promise that rejects
@@ -471,11 +396,6 @@ Deno.test("RPC wrap error during argument preparation", async () => {
 
   // Cleanup
   api.close();
-  // deno-lint-ignore no-explicit-any
-  if ((exposedHandlers as any).__endpoint_link_close) {
-    // deno-lint-ignore no-explicit-any
-    (exposedHandlers as any).__endpoint_link_close();
-  }
   closePorts(a, b);
 });
 
@@ -486,7 +406,7 @@ Deno.test("RPC wrap abort signal removeEventListener error handling", async () =
       return "success";
     },
   };
-  const exposedHandlers = expose(a, handlers);
+  using _disposable = expose(a, handlers);
   const api = await wrap<typeof handlers>(b, ["test"]);
 
   // Create a mock AbortSignal that throws when removeEventListener is called
@@ -507,11 +427,6 @@ Deno.test("RPC wrap abort signal removeEventListener error handling", async () =
 
   // Cleanup
   api.close();
-  // deno-lint-ignore no-explicit-any
-  if ((exposedHandlers as any).__endpoint_link_close) {
-    // deno-lint-ignore no-explicit-any
-    (exposedHandlers as any).__endpoint_link_close();
-  }
   closePorts(a, b);
 });
 
@@ -539,7 +454,7 @@ Deno.test("RPC expose handler aborted during execution", async () => {
     },
   };
 
-  const exposedHandlers = expose(a, handlers);
+  using _disposable = expose(a, handlers);
   const api = await wrap<typeof handlers>(b, ["taskThatThrowsAfterAbort"]);
 
   // Create an already-aborted signal to force the aborted error path in expose's catch block
@@ -556,11 +471,6 @@ Deno.test("RPC expose handler aborted during execution", async () => {
 
   // Cleanup
   api.close();
-  // deno-lint-ignore no-explicit-any
-  if ((exposedHandlers as any).__endpoint_link_close) {
-    // deno-lint-ignore no-explicit-any
-    (exposedHandlers as any).__endpoint_link_close();
-  }
   closePorts(a, b);
 });
 
@@ -571,7 +481,7 @@ Deno.test("RPC wrap response with unknown reply ID", async () => {
       return "works";
     },
   };
-  const exposedHandlers = expose(a, handlers);
+  using _disposable = expose(a, handlers);
   const api = await wrap<typeof handlers>(b, ["test"]);
 
   // Send a result message with an unknown ID - should be ignored
@@ -586,11 +496,6 @@ Deno.test("RPC wrap response with unknown reply ID", async () => {
 
   // Cleanup
   api.close();
-  // deno-lint-ignore no-explicit-any
-  if ((exposedHandlers as any).__endpoint_link_close) {
-    // deno-lint-ignore no-explicit-any
-    (exposedHandlers as any).__endpoint_link_close();
-  }
   closePorts(a, b);
 });
 
@@ -601,7 +506,7 @@ Deno.test("RPC expose cancel with missing callId", async () => {
       return "works";
     },
   };
-  const exposedHandlers = expose(a, handlers);
+  using _disposable = expose(a, handlers);
 
   // Send cancel message with no callId/idRef - should be handled gracefully
   a.postMessage({ kind: "cancel", id: "cancel-msg-id" }); // No idRef
@@ -612,11 +517,6 @@ Deno.test("RPC expose cancel with missing callId", async () => {
 
   // Cleanup
   api.close();
-  // deno-lint-ignore no-explicit-any
-  if ((exposedHandlers as any).__endpoint_link_close) {
-    // deno-lint-ignore no-explicit-any
-    (exposedHandlers as any).__endpoint_link_close();
-  }
   closePorts(a, b);
 });
 
@@ -629,7 +529,7 @@ Deno.test("RPC expose sends ready signal (integrated with wrap)", async () => {
   };
 
   // Expose handlers - this should send ready signal
-  const exposedHandlers = expose(a, handlers);
+  using _disposable = expose(a, handlers);
 
   // wrap should wait for ready signal automatically
   const api = await wrap<typeof handlers>(b, ["test"], 1000);
@@ -639,11 +539,6 @@ Deno.test("RPC expose sends ready signal (integrated with wrap)", async () => {
 
   // Cleanup
   api.close();
-  // deno-lint-ignore no-explicit-any
-  if ((exposedHandlers as any).__endpoint_link_close) {
-    // deno-lint-ignore no-explicit-any
-    (exposedHandlers as any).__endpoint_link_close();
-  }
   closePorts(a, b);
 });
 
@@ -671,5 +566,114 @@ Deno.test("RPC readiness protocol with delayed expose", async () => {
 
   // Cleanup
   api.close();
+  closePorts(a, b);
+});
+
+Deno.test("RPC wrap API throws after disposal via close()", async () => {
+  const [a, b] = memoryPair();
+  const handlers = {
+    test() {
+      return "success";
+    },
+  };
+  using _disposable = expose(a, handlers);
+  const api = await wrap<typeof handlers>(b, ["test"]);
+
+  // API works before disposal
+  assertEquals(await api.test(), "success");
+
+  // Dispose the API
+  api.close();
+
+  // Calling the API after disposal should throw synchronously
+  assertThrows(
+    () => api.test(),
+    Error,
+    "API has been disposed",
+  );
+
+  // call() method should also throw synchronously
+  assertThrows(
+    () => api.call("test"),
+    Error,
+    "API has been disposed",
+  );
+
+  closePorts(a, b);
+});
+
+Deno.test("RPC wrap API throws after disposal via Symbol.dispose", async () => {
+  const [a, b] = memoryPair();
+  const handlers = {
+    test() {
+      return "success";
+    },
+  };
+  using _disposable = expose(a, handlers);
+  const api = await wrap<typeof handlers>(b, ["test"]);
+
+  // API works before disposal
+  assertEquals(await api.test(), "success");
+
+  // Dispose the API using Symbol.dispose
+  api[Symbol.dispose]();
+
+  // Calling the API after disposal should throw synchronously
+  assertThrows(
+    () => api.test(),
+    Error,
+    "API has been disposed",
+  );
+
+  closePorts(a, b);
+});
+
+Deno.test("RPC wrap API with using syntax", async () => {
+  const [a, b] = memoryPair();
+  const handlers = {
+    add(x: number, y: number) {
+      return x + y;
+    },
+  };
+  using _disposable = expose(a, handlers);
+
+  {
+    using api = await wrap<typeof handlers>(b, ["add"]);
+    // API works within the using block
+    assertEquals(await api.add(1, 2), 3);
+  }
+
+  // After exiting the using block, the API should be disposed
+  // We can't test it directly since api is out of scope
+  // but we test it in the previous test
+
+  closePorts(a, b);
+});
+
+Deno.test("RPC expose with using syntax cleans up listeners", async () => {
+  const [a, b] = memoryPair();
+  const handlers = {
+    test() {
+      return "success";
+    },
+  };
+
+  {
+    using _disposable = expose(a, handlers);
+    const api = await wrap<typeof handlers>(b, ["test"]);
+
+    // API works while expose is active
+    assertEquals(await api.test(), "success");
+    api.close();
+  }
+
+  // After using block, expose should be disposed
+  // Try to wrap again - it should time out since expose cleaned up
+  await assertRejects(
+    () => wrap<typeof handlers>(b, ["test"], 100),
+    Error,
+    "Endpoint readiness timeout after 100ms",
+  );
+
   closePorts(a, b);
 });

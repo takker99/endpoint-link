@@ -9,6 +9,7 @@ Lightweight RPC and streaming for MessagePort-like Endpoints (WebWorker-first)
 - expose(endpoint, handlers) / wrap<Handlers>(endpoint): comlink-style API
   without Proxy
 - AbortSignal support for RPC cancellation
+- Disposable support for resource cleanup with `using` syntax
 - Transferable-aware, minimal runtime surface, Deno/jsr-first
 - Streams/backpressure will be implemented in Phase 3
 
@@ -46,4 +47,26 @@ try {
 } catch (e) {
   console.log((e as unknown as Error).message); // "boom"
 }
+```
+
+## Resource Management with `using`
+
+Both `expose` and `wrap` return Disposable objects that can be used with the
+`using` syntax for automatic cleanup:
+
+```ts ignore
+// Automatic cleanup with using
+{
+  using disposable = expose(endpoint, handlers);
+  using api = await wrap<Handlers>(endpoint, ["method"]);
+  await api.method();
+  // Automatically disposed when exiting the block
+}
+
+// Manual cleanup
+const api = await wrap<Handlers>(endpoint, ["method"]);
+api.close(); // or api[Symbol.dispose]()
+
+// After disposal, calling the API throws an error
+api.method(); // throws "API has been disposed"
 ```

@@ -1,23 +1,23 @@
 import type { CancelMsg, Msg, ResultMsg } from "./protocol.ts";
 import type { Endpoint } from "./shared_types.ts";
-import type { HandlerMap } from "./types.ts";
+import type { ExposeDisposable, HandlerMap } from "./types.ts";
 import { signalReady } from "./signal_ready.ts";
 import { on } from "./on.ts";
 import { post } from "./post.ts";
 
 /**
- * Register handlers on an endpoint and return them for typeof inference.
+ * Register handlers on an endpoint and return a Disposable for cleanup.
  * Sets up message handling for RPC calls and signals readiness.
  *
  * @param endpoint The endpoint to register handlers on.
  * @param handlers Map of handler functions to expose.
- * @returns The same handlers object for typeof inference.
+ * @returns A Disposable object for resource cleanup with `using` syntax.
  */
 
 export const expose = <H extends HandlerMap>(
   endpoint: Endpoint,
   handlers: H,
-): H => {
+): ExposeDisposable => {
   const controllerMap = new Map<string, AbortController>();
 
   const remove = on(endpoint, async (data: Msg) => {
@@ -67,21 +67,13 @@ export const expose = <H extends HandlerMap>(
     }
   });
 
-  // non-enumerable internal close for potential cleanup if needed later
-  try {
-    Object.defineProperty(handlers, "__endpoint_link_close", {
-      value: () => {
-        remove();
-        controllerMap.clear();
-      },
-      configurable: true,
-      enumerable: false,
-    });
-    // deno-lint-ignore no-empty
-  } catch {}
-
   // Signal that this endpoint is ready to receive messages
   signalReady(endpoint);
 
-  return handlers;
+  return {
+    [Symbol.dispose]: () => {
+      remove();
+      controllerMap.clear();
+    },
+  };
 };

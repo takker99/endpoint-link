@@ -32,6 +32,8 @@ export const wrap = async <H extends HandlerMap>(
     { resolve: (v: any) => void; reject: (e: any) => void }
   >();
 
+  let disposed = false;
+
   const remove = on(endpoint, (data: Msg) => {
     if (!data) return;
     if (data.kind === "result") {
@@ -49,6 +51,10 @@ export const wrap = async <H extends HandlerMap>(
 
   // deno-lint-ignore no-explicit-any
   const call = <K extends keyof H & string>(name: K, ...args: any[]): any => {
+    if (disposed) {
+      throw new Error("API has been disposed");
+    }
+
     const id = genId();
     const prom = new Promise((resolve, reject) => {
       replies.set(id, { resolve, reject });
@@ -122,13 +128,17 @@ export const wrap = async <H extends HandlerMap>(
     return prom;
   };
 
+  const dispose = () => {
+    disposed = true;
+    remove();
+    replies.clear();
+  };
+
   // deno-lint-ignore no-explicit-any
   const api: any = {
     call,
-    close: () => {
-      remove();
-      replies.clear();
-    },
+    close: dispose,
+    [Symbol.dispose]: dispose,
   };
   if (Array.isArray(methodNames)) {
     for (const m of methodNames) {
