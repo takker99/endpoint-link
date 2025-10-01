@@ -677,3 +677,76 @@ Deno.test("RPC expose with using syntax cleans up listeners", async () => {
 
   closePorts(a, b);
 });
+
+Deno.test("RPC messageerror event listener attached in expose", () => {
+  const [a, b] = memoryPair();
+  const handlers = {
+    test() {
+      return "success";
+    },
+  };
+
+  // Track if messageerror handler is registered
+  let messageerrorHandled = false;
+
+  // Spy on addEventListener to check if messageerror listener is attached
+  // deno-lint-ignore no-explicit-any
+  const originalAddEventListener = (a as any).addEventListener;
+  // deno-lint-ignore no-explicit-any
+  (a as any).addEventListener = function (
+    type: string,
+    listener: EventListener,
+    options?: AddEventListenerOptions,
+  ) {
+    if (type === "messageerror") {
+      messageerrorHandled = true;
+    }
+    // deno-lint-ignore no-explicit-any
+    return originalAddEventListener.call(this, type as any, listener, options);
+  };
+
+  using _disposable = expose(a, handlers);
+
+  // Verify messageerror listener was attached
+  assertEquals(messageerrorHandled, true);
+
+  closePorts(a, b);
+});
+
+Deno.test("RPC messageerror event listener attached in wrap", async () => {
+  const [a, b] = memoryPair();
+  const handlers = {
+    test() {
+      return "success";
+    },
+  };
+
+  using _disposable = expose(a, handlers);
+
+  // Track if messageerror handler is registered
+  let messageerrorHandled = false;
+
+  // Spy on addEventListener to check if messageerror listener is attached
+  // deno-lint-ignore no-explicit-any
+  const originalAddEventListener = (b as any).addEventListener;
+  // deno-lint-ignore no-explicit-any
+  (b as any).addEventListener = function (
+    type: string,
+    listener: EventListener,
+    options?: AddEventListenerOptions,
+  ) {
+    if (type === "messageerror") {
+      messageerrorHandled = true;
+    }
+    // deno-lint-ignore no-explicit-any
+    return originalAddEventListener.call(this, type as any, listener, options);
+  };
+
+  const api = await wrap<typeof handlers>(b, ["test"]);
+
+  // Verify messageerror listener was attached
+  assertEquals(messageerrorHandled, true);
+
+  api.close();
+  closePorts(a, b);
+});

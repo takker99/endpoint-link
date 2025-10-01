@@ -13,6 +13,13 @@ export interface Endpoint {
     options?: AddEventListenerOptions,
   ): void;
 
+  /** Add event listener for messageerror events (when message cannot be deserialized). */
+  addEventListener(
+    type: "messageerror",
+    listener: (ev: MessageEvent) => void,
+    options?: AddEventListenerOptions,
+  ): void;
+
   /** Optional start method for MessagePort compatibility. */
   start?: () => void;
 }
