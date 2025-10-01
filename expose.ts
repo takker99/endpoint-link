@@ -2,7 +2,7 @@ import type { CancelMsg, Msg, ResultMsg } from "./protocol.ts";
 import type { Endpoint } from "./shared_types.ts";
 import type { ExposeDisposable, HandlerMap } from "./types.ts";
 import { signalReady } from "./signal_ready.ts";
-import { on } from "./on.ts";
+import { on, onMessageError } from "./on.ts";
 import { post } from "./post.ts";
 
 /**
@@ -67,12 +67,18 @@ export const expose = <H extends HandlerMap>(
     }
   });
 
+  // Handle messageerror events (when message cannot be deserialized)
+  const removeMessageError = onMessageError(endpoint, (ev: MessageEvent) => {
+    console.error("Message deserialization error:", ev);
+  });
+
   // Signal that this endpoint is ready to receive messages
   signalReady(endpoint);
 
   return {
     [Symbol.dispose]: () => {
       remove();
+      removeMessageError();
       controllerMap.clear();
     },
   };
