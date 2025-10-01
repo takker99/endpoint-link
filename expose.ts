@@ -67,15 +67,13 @@ export const expose = <H extends HandlerMap>(
     }
   });
 
-  const dispose = () => {
-    remove();
-    controllerMap.clear();
-  };
-
   // Signal that this endpoint is ready to receive messages
   signalReady(endpoint);
 
   return {
-    [Symbol.dispose]: dispose,
+    [Symbol.dispose]: () => {
+      remove();
+      controllerMap.clear();
+    },
   };
 };

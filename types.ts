@@ -69,18 +69,16 @@ export type SenderApiFromHandlers<H extends HandlerMap> =
       ...args: SenderArgsFromReceiverParams<WithoutAbort<Parameters<H[K]>>>
     ): NormalizeReturn<ReturnType<H[K]>>;
     close(): void;
-    [Symbol.dispose](): void;
   }
   & {
     [K in keyof H & string]: (
       ...args: SenderArgsFromReceiverParams<WithoutAbort<Parameters<H[K]>>>
     ) => NormalizeReturn<ReturnType<H[K]>>;
-  };
+  }
+  & Disposable;
 
 /**
  * Disposable object returned by expose() for resource cleanup.
  * Implements Disposable for use with `using` syntax.
  */
-export type ExposeDisposable = {
-  [Symbol.dispose](): void;
-};
+export type ExposeDisposable = Disposable;
