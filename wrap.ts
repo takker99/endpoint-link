@@ -4,7 +4,7 @@ import type { HandlerMap, SenderApiFromHandlers } from "./types.ts";
 import { waitForReady } from "./wait_for_ready.ts";
 import { genId } from "./gen_id.ts";
 import { isAbortSignal } from "./is_abort_signal.ts";
-import { on } from "./on.ts";
+import { on, onMessageError } from "./on.ts";
 import { post } from "./post.ts";
 
 /**
@@ -47,6 +47,11 @@ export const wrap = async <H extends HandlerMap>(
       // deno-lint-ignore no-explicit-any
       replies.delete((data as any).id);
     }
+  });
+
+  // Handle messageerror events (when message cannot be deserialized)
+  const removeMessageError = onMessageError(endpoint, (ev: MessageEvent) => {
+    console.error("Message deserialization error:", ev);
   });
 
   // deno-lint-ignore no-explicit-any
@@ -131,6 +136,7 @@ export const wrap = async <H extends HandlerMap>(
   const dispose = () => {
     disposed = true;
     remove();
+    removeMessageError();
     replies.clear();
   };
 
