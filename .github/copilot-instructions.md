@@ -37,7 +37,7 @@ function memoryPair(): [Endpoint, Endpoint] {
 
 ```ts
 const handlers = {
-  method(a: number, b: string, signal?: AbortSignal) {
+  method(a: number, b: string) {
     return a + b.length;
   },
 };
@@ -48,14 +48,14 @@ const handlers = {
 ```ts
 import { type Endpoint, wrap } from "@takker/endpoint-link";
 const handlers = {
-  method(a: number, b: string, signal?: AbortSignal) {
+  method(a: number, b: string) {
     return a + b.length;
   },
 };
 declare const endpoint: Endpoint;
 
-const api = await wrap<typeof handlers>(endpoint, ["method"]);
-await api.method(1, "test"); // or api.call("method", 1, "test")
+const api = await wrap<typeof handlers>(endpoint);
+await api("method", [1, "test"]);
 ```
 
 **Error handling**: Handler throws → stringified error in protocol →
