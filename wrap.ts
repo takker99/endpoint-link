@@ -19,7 +19,7 @@ import { on, onMessageError } from "./on.ts";
  * @returns Promise resolving to a remote procedure caller
  *
  * @example
- * ```ts
+ * ```ts ignore
  * using api = await wrap<MyAPI>(endpoint, { timeout: 3000 });
  * const result = await api("methodName", [arg1, arg2], { signal });
  * ```

@@ -24,7 +24,7 @@ import { expose, wrap } from "jsr:@takker/endpoint-link";
 
 ### Basic RPC
 
-```ts
+```ts ignore
 // Server side
 const handlers = {
   add(a: number, b: number) {
@@ -48,7 +48,7 @@ const data = await api("fetchData", ["https://api.example.com"]);
 
 ### With AbortSignal
 
-```ts
+```ts ignore
 const controller = new AbortController();
 
 // Pass signal in options
@@ -64,7 +64,7 @@ await promise; // throws "aborted" error
 
 ### With Transferable Objects
 
-```ts
+```ts ignore
 // Transfer ArrayBuffer ownership for better performance
 const buffer = new ArrayBuffer(1024);
 const result = await api("processBuffer", [buffer], {
@@ -77,7 +77,7 @@ console.log(buffer.byteLength); // 0
 
 ### Custom Timeout
 
-```ts
+```ts ignore
 // Wait up to 3 seconds for endpoint to be ready
 using api = await wrap<Handlers>(endpoint, { timeout: 3000 });
 ```
@@ -86,7 +86,7 @@ using api = await wrap<Handlers>(endpoint, { timeout: 3000 });
 
 Both `expose` and `wrap` return Disposable objects for automatic cleanup:
 
-```ts
+```ts ignore
 {
   using disposable = expose(endpoint, handlers);
   using api = await wrap<Handlers>(endpoint);
@@ -116,7 +116,7 @@ Create a remote procedure caller.
 
 Returns a callable function with signature:
 
-```ts
+```ts ignore
 <Name>(name: Name, args: Parameters<Map[Name]>, options?: RemoteProcedureOptions)
 ```
 
@@ -131,7 +131,7 @@ Returns a Disposable for cleanup.
 
 ### `RemoteProcedureOptions`
 
-```ts
+```ts ignore
 interface RemoteProcedureOptions {
   transfer?: Transferable[]; // Objects to transfer
   signal?: AbortSignal; // Cancellation signal
@@ -140,7 +140,7 @@ interface RemoteProcedureOptions {
 
 ## Migration from v0.x
 
-```ts
+```ts ignore
 // Before
 const api = await wrap<Handlers>(endpoint, ["add", "mul"]);
 await api.add(1, 2);
