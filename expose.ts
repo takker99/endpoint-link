@@ -1,9 +1,8 @@
 import type { CancelMsg, Msg, ResultMsg } from "./protocol.ts";
 import type { Endpoint } from "./shared_types.ts";
-import type { ExposeDisposable, HandlerMap } from "./types.ts";
+import type { ExposeDisposable, RemoteProcedureMap } from "./types.ts";
 import { signalReady } from "./signal_ready.ts";
 import { on, onMessageError } from "./on.ts";
-import { post } from "./post.ts";
 
 /**
  * Register handlers on an endpoint and return a Disposable for cleanup.
@@ -14,7 +13,7 @@ import { post } from "./post.ts";
  * @returns A Disposable object for resource cleanup with `using` syntax.
  */
 
-export const expose = <H extends HandlerMap>(
+export const expose = <H extends RemoteProcedureMap>(
   endpoint: Endpoint,
   handlers: H,
 ): ExposeDisposable => {
@@ -27,9 +26,9 @@ export const expose = <H extends HandlerMap>(
       // deno-lint-ignore no-explicit-any
       const h = (handlers as any)[name];
       if (!h) {
-        post(
-          endpoint,
+        endpoint.postMessage(
           { id, kind: "result", error: `no handler: ${name}` } as ResultMsg,
+          [],
         );
         return;
       }
@@ -40,14 +39,20 @@ export const expose = <H extends HandlerMap>(
       try {
         // deno-lint-ignore no-explicit-any
         const res = await (h as any)(...args, ac.signal);
-        post(endpoint, { id, kind: "result", result: res } as ResultMsg);
+        endpoint.postMessage(
+          { id, kind: "result", result: res } as ResultMsg,
+          [],
+        );
       } catch (e) {
         if (ac.signal.aborted) {
-          post(endpoint, { id, kind: "result", error: "aborted" } as ResultMsg);
+          endpoint.postMessage(
+            { id, kind: "result", error: "aborted" } as ResultMsg,
+            [],
+          );
         } else {
-          post(
-            endpoint,
+          endpoint.postMessage(
             { id, kind: "result", error: String(e || "unknown") } as ResultMsg,
+            [],
           );
         }
       } finally {

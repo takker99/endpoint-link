@@ -1,32 +1,39 @@
 import type { CallMsg, CancelMsg, Msg } from "./protocol.ts";
 import type { Endpoint } from "./shared_types.ts";
-import type { HandlerMap, SenderApiFromHandlers } from "./types.ts";
+import type {
+  RemoteProcedure,
+  RemoteProcedureMap,
+  RemoteProcedureOptions,
+  WrapOptions,
+} from "./types.ts";
 import { waitForReady } from "./wait_for_ready.ts";
 import { genId } from "./gen_id.ts";
-import { isAbortSignal } from "./is_abort_signal.ts";
 import { on, onMessageError } from "./on.ts";
-import { post } from "./post.ts";
 
 /**
- * Create a typed sender API from handler definitions.
- * Waits for endpoint readiness before returning the API.
+ * Create a typed remote procedure caller from an endpoint.
+ * Waits for endpoint readiness before returning.
  *
- * @param endpoint The endpoint to communicate through.
- * @param methodNames Optional array of method names to add as direct properties.
- * @param timeoutMs Timeout for waiting for endpoint readiness. Defaults to 5000ms.
- * @returns Promise resolving to a typed sender API with call method and optional direct methods.
+ * @param endpoint The endpoint to communicate through
+ * @param options Configuration options
+ * @returns Promise resolving to a remote procedure caller
+ *
+ * @example
+ * ```ts
+ * using api = await wrap<MyAPI>(endpoint, { timeout: 3000 });
+ * const result = await api("methodName", [arg1, arg2], { signal });
+ * ```
  */
-
-export const wrap = async <H extends HandlerMap>(
+export const wrap = async <Map extends RemoteProcedureMap>(
   endpoint: Endpoint,
-  methodNames?: (keyof H & string)[],
-  timeoutMs = 5000,
-): Promise<SenderApiFromHandlers<H>> => {
-  // Wait for endpoint to be ready before creating the API
-  await waitForReady(endpoint, timeoutMs);
+  options?: WrapOptions,
+): Promise<RemoteProcedure<Map>> => {
+  const { timeout = 5000 } = options ?? {};
 
-  type API = SenderApiFromHandlers<H>;
-  const replies = new Map<
+  // Wait for endpoint to be ready
+  await waitForReady(endpoint, timeout);
+
+  const pendingCalls = new Map<
     string,
     // deno-lint-ignore no-explicit-any
     { resolve: (v: any) => void; reject: (e: any) => void }
@@ -34,131 +41,142 @@ export const wrap = async <H extends HandlerMap>(
 
   let disposed = false;
 
-  const remove = on(endpoint, (data: Msg) => {
-    if (!data) return;
-    if (data.kind === "result") {
-      // deno-lint-ignore no-explicit-any
-      const p = replies.get((data as any).id);
-      if (!p) return;
-      // deno-lint-ignore no-explicit-any
-      if ((data as any).error) p.reject(new Error((data as any).error));
-      // deno-lint-ignore no-explicit-any
-      else p.resolve((data as any).result);
-      // deno-lint-ignore no-explicit-any
-      replies.delete((data as any).id);
+  // Handle result messages
+  const cleanupMessageListener = on(endpoint, (data: Msg) => {
+    if (!data || data.kind !== "result") return;
+
+    // deno-lint-ignore no-explicit-any
+    const { id, error, result } = data as any;
+    const pending = pendingCalls.get(id);
+    if (!pending) return;
+
+    pendingCalls.delete(id);
+
+    if (error) {
+      pending.reject(new Error(error));
+    } else {
+      pending.resolve(result);
     }
   });
 
-  // Handle messageerror events (when message cannot be deserialized)
-  const removeMessageError = onMessageError(endpoint, (ev: MessageEvent) => {
+  // Handle deserialization errors
+  const cleanupErrorListener = onMessageError(endpoint, (ev: MessageEvent) => {
     console.error("Message deserialization error:", ev);
   });
 
-  // deno-lint-ignore no-explicit-any
-  const call = <K extends keyof H & string>(name: K, ...args: any[]): any => {
+  // Main call function
+  const call = <Name extends keyof Map>(
+    name: Name,
+    args: Parameters<Map[Name]>,
+    options?: RemoteProcedureOptions,
+    // deno-lint-ignore no-explicit-any
+  ): any => {
     if (disposed) {
       throw new Error("API has been disposed");
     }
 
-    const id = genId();
-    const prom = new Promise((resolve, reject) => {
-      replies.set(id, { resolve, reject });
+    // Validate arguments don't contain Promises
+    for (const arg of args) {
+      if (arg && typeof arg.then === "function") {
+        throw new TypeError(
+          "Promise arguments are not supported. Await promises before passing them as arguments.",
+        );
+      }
+    }
 
-      // extract AbortSignal if given as last arg
-      let signal: AbortSignal | undefined;
-      if (args.length > 0 && isAbortSignal(args[args.length - 1])) {
-        signal = args.pop();
+    const id = genId();
+    const { transfer, signal } = options ?? {};
+
+    return new Promise((resolve, reject) => {
+      // Check if already aborted
+      if (signal?.aborted) {
+        reject(new Error("aborted"));
+        return;
       }
 
-      (async () => {
-        try {
-          const normalizedArgs = [];
-          for (const a of args) normalizedArgs.push(await prepareArg(a));
+      // Store pending call
+      pendingCalls.set(id, { resolve, reject });
 
-          if (signal) {
-            if (signal.aborted) {
-              post(endpoint, { id, kind: "cancel", idRef: id } as CancelMsg);
-              replies.delete(id);
-              reject(new Error("aborted"));
-              return;
+      // Setup abort handling
+      let abortHandler: (() => void) | undefined;
+      if (signal) {
+        abortHandler = () => {
+          const pending = pendingCalls.get(id);
+          if (pending) {
+            pendingCalls.delete(id);
+            pending.reject(new Error("aborted"));
+
+            // Send cancel message
+            try {
+              endpoint.postMessage(
+                { id, kind: "cancel", idRef: id } as CancelMsg,
+                [],
+              );
+            } catch {
+              // Ignore errors sending cancel
             }
-            const onAbort = () => {
-              post(endpoint, { id, kind: "cancel", idRef: id } as CancelMsg);
-              const obj = replies.get(id);
-              if (obj) {
-                obj.reject(new Error("aborted"));
-                replies.delete(id);
-              }
-            };
-            signal.addEventListener("abort", onAbort, { once: true });
-
-            // cleanup listener after resolve/reject
-            const orig = replies.get(id)!;
-            replies.set(id, {
-              // deno-lint-ignore no-explicit-any
-              resolve: (v: any) => {
-                try {
-                  signal!.removeEventListener("abort", onAbort);
-                  // deno-lint-ignore no-empty
-                } catch {}
-                orig.resolve(v);
-              },
-              // deno-lint-ignore no-explicit-any
-              reject: (e: any) => {
-                try {
-                  signal!.removeEventListener("abort", onAbort);
-                  // deno-lint-ignore no-empty
-                } catch {}
-                orig.reject(e);
-              },
-            });
           }
+        };
 
-          post(
-            endpoint,
-            {
-              id,
-              kind: "call",
-              name: name as string,
-              args: normalizedArgs,
-            } as CallMsg,
-          );
-        } catch (e) {
-          replies.delete(id);
-          reject(e);
-        }
-      })();
+        signal.addEventListener("abort", abortHandler, { once: true });
+
+        // Wrap resolve/reject to cleanup listener
+        const originalResolve = resolve;
+        const originalReject = reject;
+
+        // deno-lint-ignore no-explicit-any
+        resolve = (value: any) => {
+          try {
+            signal.removeEventListener("abort", abortHandler!);
+          } catch {
+            // Ignore cleanup errors
+          }
+          originalResolve(value);
+        };
+
+        // deno-lint-ignore no-explicit-any
+        reject = (error: any) => {
+          try {
+            signal.removeEventListener("abort", abortHandler!);
+          } catch {
+            // Ignore cleanup errors
+          }
+          originalReject(error);
+        };
+
+        // Update stored callbacks
+        pendingCalls.set(id, { resolve, reject });
+      }
+
+      // Send call message
+      try {
+        const msg: CallMsg = {
+          id,
+          kind: "call",
+          name: name as string,
+          // deno-lint-ignore no-explicit-any
+          args: args as any[],
+        };
+
+        endpoint.postMessage(msg, transfer ?? []);
+      } catch (error) {
+        pendingCalls.delete(id);
+        reject(error);
+      }
     });
-
-    return prom;
   };
 
+  // Cleanup function
   const dispose = () => {
     disposed = true;
-    remove();
-    removeMessageError();
-    replies.clear();
+    cleanupMessageListener();
+    cleanupErrorListener();
+    pendingCalls.clear();
   };
 
-  // deno-lint-ignore no-explicit-any
-  const api: any = {
-    call,
-    close: dispose,
-    [Symbol.dispose]: dispose,
-  };
-  if (Array.isArray(methodNames)) {
-    for (const m of methodNames) {
-      // deno-lint-ignore no-explicit-any
-      api[m] = (...args: any[]) => call(m as any, ...args);
-    }
-  }
-  return api as API;
-};
+  // Create API object
+  const api = call as RemoteProcedure<Map>;
+  api[Symbol.dispose] = dispose;
 
-// deno-lint-ignore no-explicit-any
-const prepareArg = async (arg: any) => {
-  if (arg && typeof arg.then === "function") {
-    return await arg;
-  }
-  return arg;
+  return api;
 };
