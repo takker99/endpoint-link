@@ -11,13 +11,13 @@ Deno.test("Worker integration without top-level await", async () => {
     const api = await wrap<{
       add(a: number, b: number, signal?: AbortSignal): number;
       multiply(a: number, b: number, signal?: AbortSignal): number;
-    }>(worker, ["add", "multiply"], 2000);
+    }>(worker, { timeout: 2000 });
 
     // Test basic functionality
-    assertEquals(await api.add(1, 2), 3);
-    assertEquals(await api.multiply(3, 4), 12);
+    assertEquals(await api("add", [1, 2]), 3);
+    assertEquals(await api("multiply", [3, 4]), 12);
 
-    api.close();
+    api[Symbol.dispose]();
   } finally {
     worker.terminate();
   }
@@ -33,20 +33,22 @@ Deno.test("Worker integration with simulated top-level await", async () => {
     const api = await wrap<{
       getMessage(signal?: AbortSignal): string;
       delayedTask(ms: number, signal?: AbortSignal): Promise<string>;
-    }>(worker, ["getMessage", "delayedTask"], 3000);
+    }>(worker, { timeout: 3000 });
 
     // Test basic functionality
     assertEquals(
-      await api.getMessage(),
+      await api("getMessage", []),
       "Hello from worker with top-level await!",
     );
 
     // Test delayed task
-    assertEquals(await api.delayedTask(50), "Task completed after 50ms");
+    assertEquals(await api("delayedTask", [50]), "Task completed after 50ms");
 
     // Test cancellation
     const controller = new AbortController();
-    const taskPromise = api.delayedTask(200, controller.signal);
+    const taskPromise = api("delayedTask", [200], {
+      signal: controller.signal,
+    });
     setTimeout(() => controller.abort(), 50);
 
     await assertRejects(
@@ -55,7 +57,7 @@ Deno.test("Worker integration with simulated top-level await", async () => {
       "aborted",
     );
 
-    api.close();
+    api[Symbol.dispose]();
   } finally {
     worker.terminate();
   }
@@ -70,7 +72,7 @@ Deno.test("Worker readiness timeout when worker fails to respond", async () => {
   try {
     // Should timeout since worker never sends ready signal
     await assertRejects(
-      () => wrap<Record<PropertyKey, never>>(worker, [], 500),
+      () => wrap<Record<PropertyKey, never>>(worker, { timeout: 500 }),
       Error,
       "Endpoint readiness timeout after 500ms",
     );
@@ -89,23 +91,23 @@ Deno.test("Worker integration with error handling", async () => {
     const api = await wrap<{
       throwError(message: string, signal?: AbortSignal): never;
       throwNull(signal?: AbortSignal): never;
-    }>(worker, ["throwError", "throwNull"], 2000);
+    }>(worker, { timeout: 2000 });
 
     // Test error propagation
     await assertRejects(
-      () => api.throwError("Test error"),
+      () => api("throwError", ["Test error"]),
       Error,
       "Test error",
     );
 
     // Test null error handling
     await assertRejects(
-      () => api.throwNull(),
+      () => api("throwNull", []),
       Error,
       "unknown",
     );
 
-    api.close();
+    api[Symbol.dispose]();
   } finally {
     worker.terminate();
   }
@@ -124,15 +126,15 @@ Deno.test("Worker integration with MessageChannel-style communication", async ()
         count: number;
         average: number;
       };
-    }>(worker, ["processData"], 2000);
+    }>(worker, { timeout: 2000 });
 
-    const result = await api.processData({ items: [1, 2, 3, 4, 5] });
+    const result = await api("processData", [{ items: [1, 2, 3, 4, 5] }]);
 
     assertEquals(result.sum, 15);
     assertEquals(result.count, 5);
     assertEquals(result.average, 3);
 
-    api.close();
+    api[Symbol.dispose]();
   } finally {
     worker.terminate();
   }
