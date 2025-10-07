@@ -1,25 +1,25 @@
 # Copilot Instructions for endpoint-link
 
-Lightweight RPC library for MessagePort-like Endpoints (WebWorker-first). Phase
-1: non-streaming RPC only.
+Lightweight type-safe RPC library for MessagePort-like Endpoints (WebWorker,
+BroadcastChannel, etc.). Phase 1: non-streaming RPC only.
 
 ## Architecture Overview
 
-- **Root-level modules** (no src/ directory): `mod.ts` (public API), `types.ts`
-  (complex type mappings), `protocol.ts` (message frames), `utils.ts` (shared
-  helpers), `shared_types.ts` (Endpoint interface)
-- **Core flow**: `expose()` registers handlers on receiver →
-  `wrap<typeof handlers>()` creates typed client → bidirectional RPC via
+- **Root-level modules** (no src/ directory): `mod.ts` (public API),
+  `expose.ts`, `wrap.ts`, `types.ts` (type definitions), `protocol.ts` (message
+  frames), `shared_types.ts` (Endpoint interface)
+- **Core flow**: `expose()` registers handlers on receiver + signals ready →
+  `wrap()` waits for ready signal → creates typed client → bidirectional RPC via
   protocol frames
-- **Type safety**: Complex sender/receiver type mapping where sender args can be
-  `T | Promise<T>`, receiver gets `T`, receiver returns `T | Promise<T>`, sender
-  gets `Promise<T>`
-- **No Proxy**: Explicit `api.call(name, ...args)` or runtime methods from
-  `methodNames` array
+- **Type safety**: Full TypeScript inference with `RemoteProcedure<Map>`
+  interface
+- **Explicit API**: `api(name, [args], options?)` pattern - no Proxy, no magic
+- **Resource management**: Both `expose()` and `wrap()` return Disposables for
+  use with `using` syntax
 
 ## Key Patterns
 
-**Testing with MessageChannel pairs**:
+**Testing with MessageChannel pairs** (see `test_utils.ts`):
 
 ```ts
 import type { Endpoint } from "@takker/endpoint-link";
@@ -33,63 +33,84 @@ function memoryPair(): [Endpoint, Endpoint] {
 }
 ```
 
-**Handler signature with trailing AbortSignal**:
+**Handler signature** (trailing optional AbortSignal):
 
 ```ts
 const handlers = {
-  method(a: number, b: string) {
-    return a + b.length;
+  add(a: number, b: number, signal?: AbortSignal) {
+    return a + b;
   },
 };
 ```
 
-**Type-safe wrap usage**:
+**Complete usage pattern with resource management**:
 
 ```ts
-import { type Endpoint, wrap } from "@takker/endpoint-link";
-const handlers = {
-  method(a: number, b: string) {
-    return a + b.length;
-  },
-};
+import { type Endpoint, expose, wrap } from "@takker/endpoint-link";
 declare const endpoint: Endpoint;
+declare const handlers: {
+  add(a: number, b: number, signal?: AbortSignal): number;
+  processBuffer(buffer: ArrayBuffer, signal?: AbortSignal): Promise<number>;
+  longTask(ms: number, signal?: AbortSignal): Promise<string>;
+};
 
-const api = await wrap<typeof handlers>(endpoint);
-await api("method", [1, "test"]);
+// Server
+using disposable = expose(endpoint, handlers);
+
+// Client
+using api = await wrap<typeof handlers>(endpoint);
+const result = await api("add", [1, 2]); // 3
+
+// With AbortSignal
+const controller = new AbortController();
+await api("longTask", [1000], { signal: controller.signal });
+
+// With Transferable
+const buffer = new ArrayBuffer(8);
+await api("processBuffer", [buffer], { transfer: [buffer] });
 ```
 
-**Error handling**: Handler throws → stringified error in protocol →
-reconstructed Error on sender
+**Critical constraints**:
+
+- Arguments must NOT be Promises (throws TypeError) - await before passing
+- Args passed as array: `api(name, [arg1, arg2])` not `api(name, arg1, arg2)`
+- Options go in third parameter: `{ signal?, transfer? }`
+- Handler errors → stringified in protocol → reconstructed as Error on sender
 
 ## Development Workflow
 
 - **Deno tasks**: `deno task test` (runs tests + coverage), `deno task check`
   (fmt + lint + type-check + publish dry-run), `deno task fix` (auto-fixes)
 - **Web standards only**: No Node.js APIs, compatible with Deno/browser/Workers
-- **Custom test assertions**: Uses local `assertEquals`/`assertRejects` instead
-  of @std/assert
-- **Coverage**: Generated at `coverage/lcov.info`, uploaded to Codecov in CI
+- **Test assertions**: Uses @std/assert (`assertEquals`, `assertRejects`,
+  `assertThrows`)
+- **Test helpers**: `memoryPair()` and `closePorts()` in `test_utils.ts` for
+  MessageChannel-based tests
+- **Coverage**: Generated at `coverage/`, uploaded to Codecov in CI
 
 ## Protocol Implementation Details
 
-**Message frames**: `{ id, kind: "call", name, args }` →
+**Message frames**: `{ kind: "ready" }` → `{ id, kind: "call", name, args }` →
 `{ id, kind: "result", result?, error? }` with optional
 `{ id, kind: "cancel", idRef }`
+
+**Readiness handshake**: `expose()` sends "ready" signal immediately; `wrap()`
+waits for it (default 5s timeout) before allowing calls
 
 **Runtime mechanics**:
 
 - `expose()`: Creates per-call AbortController map, stringifies handler errors,
   handles legacy cancel.id fallback
-- `wrap()`: Maintains pending promise map, auto-awaits Promise args before
-  sending, extracts trailing AbortSignal
+- `wrap()`: Validates args aren't Promises (throws TypeError), maintains pending
+  promise map, sends cancel on AbortSignal
 
 **Critical utilities** (reuse these):
 
-- `utils.ts`: `post()` handles transferables, `on()` works with both
-  addEventListener patterns, `genId()` uses crypto.getRandomValues with
-  Math.random fallback
-- `types.ts`: Complex type mappings for sender/receiver arg/return
-  transformation
+- `on.ts`: `on()` attaches listeners supporting both addEventListener and
+  onmessage patterns, `onMessageError()` for deserialization errors
+- `gen_id.ts`: `genId()` uses crypto.getRandomValues (no fallback)
+- `signal_ready.ts`/`wait_for_ready.ts`: Readiness handshake implementation
+- `types.ts`: `RemoteProcedure<Map>` interface with Disposable support
 
 ## Code Style & Testing
 
@@ -103,15 +124,15 @@ reconstructed Error on sender
 
 **Testing conventions**:
 
-- Custom assertions (`assertEquals`, `assertRejects`) to avoid @std/assert
-  dependency issues
-- Test names format: "component.method behavior" (e.g., "wrap.call resolves on
-  success")
-- Use `memoryPair()` helper for MessageChannel-based test endpoints
+- Use @std/assert: `assertEquals`, `assertRejects`, `assertThrows`
+- Test names format: "Component: behavior description" (e.g., "RPC basic success
+  (value + Promise)")
+- Use `memoryPair()` and `closePorts()` helpers from `test_utils.ts`
+- Always use `using` for resource management in tests
 - Cover success, error, cancellation, and transferable scenarios
 
-**Security**: Use `crypto.getRandomValues()` for IDs with Math.random fallback,
-validate message shapes, never eval received data
+**Security**: Use `crypto.getRandomValues()` for IDs, validate message shapes,
+never eval received data
 
 ## Future Development
 
