@@ -531,7 +531,9 @@ Deno.test("RPC expose sends ready signal (integrated with wrap)", async () => {
   using _disposable = expose(a, handlers);
 
   // wrap should wait for ready signal automatically
-  const api = await wrap<typeof handlers>(b, { timeout: 1000 });
+  const api = await wrap<typeof handlers>(b, {
+    signal: AbortSignal.timeout(1000),
+  });
 
   // If we get here, the ready signal was received
   assertEquals(await api("test", []), "works");
@@ -550,7 +552,9 @@ Deno.test("RPC readiness protocol with delayed expose", async () => {
   };
 
   // Start wrap which will wait for ready signal
-  const wrapPromise = wrap<typeof handlers>(b, { timeout: 1000 });
+  const wrapPromise = wrap<typeof handlers>(b, {
+    signal: AbortSignal.timeout(1000),
+  });
 
   // Expose handlers after a delay
   setTimeout(() => {
@@ -662,11 +666,11 @@ Deno.test("RPC expose with using syntax cleans up listeners", async () => {
   }
 
   // After using block, expose should be disposed
-  // Try to wrap again - it should time out since expose cleaned up
+  // Try to wrap again - it should abort since expose cleaned up
   await assertRejects(
-    () => wrap<typeof handlers>(b, { timeout: 100 }),
+    () => wrap<typeof handlers>(b, { signal: AbortSignal.timeout(100) }),
     Error,
-    "Endpoint readiness timeout after 100ms",
+    "aborted",
   );
 
   closePorts(a, b);
@@ -745,7 +749,7 @@ Deno.test("RPC messageerror event listener attached in wrap", async () => {
   closePorts(a, b);
 });
 
-Deno.test("RPC wrap with custom timeout option", async () => {
+Deno.test("RPC wrap with custom signal option", async () => {
   const [a, b] = memoryPair();
   const handlers = {
     test() {
@@ -755,8 +759,10 @@ Deno.test("RPC wrap with custom timeout option", async () => {
 
   using _disposable = expose(a, handlers);
 
-  // Test with custom timeout
-  const api = await wrap<typeof handlers>(b, { timeout: 3000 });
+  // Test with custom signal
+  const api = await wrap<typeof handlers>(b, {
+    signal: AbortSignal.timeout(3000),
+  });
   assertEquals(await api("test", []), "success");
 
   api[Symbol.dispose]();
