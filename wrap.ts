@@ -20,14 +20,8 @@ import { on, onMessageError } from "./on.ts";
  *
  * @example
  * ```ts ignore
- * const controller = new AbortController();
- * const timeout = setTimeout(() => controller.abort(), 5000);
- * try {
- *   using api = await wrap<MyAPI>(endpoint, { signal: controller.signal });
- *   const result = await api("methodName", [arg1, arg2], { signal });
- * } finally {
- *   clearTimeout(timeout);
- * }
+ * using api = await wrap<MyAPI>(endpoint, { signal: AbortSignal.timeout(5000) });
+ * const result = await api("methodName", [arg1, arg2]);
  * ```
  */
 export const wrap = async <Map extends RemoteProcedureMap>(

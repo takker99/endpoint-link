@@ -158,11 +158,9 @@ Deno.test("wrap()", async (t) => {
       using _exposer = expose(a, handlers);
       const api = await wrap<typeof handlers>(b);
 
-      const controller = new AbortController();
-      const callPromise = api("longTask", [], { signal: controller.signal });
-
-      // Abort quickly
-      setTimeout(() => controller.abort(), 10);
+      const callPromise = api("longTask", [], {
+        signal: AbortSignal.timeout(10),
+      });
 
       await assertRejects(
         () => callPromise,

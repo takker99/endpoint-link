@@ -45,11 +45,9 @@ Deno.test("Worker integration with simulated top-level await", async () => {
     assertEquals(await api("delayedTask", [50]), "Task completed after 50ms");
 
     // Test cancellation
-    const callController = new AbortController();
     const taskPromise = api("delayedTask", [200], {
-      signal: callController.signal,
+      signal: AbortSignal.timeout(50),
     });
-    setTimeout(() => callController.abort(), 50);
 
     await assertRejects(
       () => taskPromise,
