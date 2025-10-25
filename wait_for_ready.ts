@@ -5,24 +5,41 @@ import { on } from "./on.ts";
  * Wait for an endpoint to signal it's ready before making calls.
  *
  * @param endpoint The endpoint to wait for readiness signal from.
- * @param timeoutMs Timeout in milliseconds before rejecting. Defaults to 5000ms.
- * @returns Promise that resolves when endpoint signals ready or rejects on timeout.
+ * @param signal Optional abort signal to cancel waiting.
+ * @returns Promise that resolves when endpoint signals ready or rejects if aborted.
  */
 export const waitForReady = (
   endpoint: Endpoint,
-  timeoutMs = 5000,
+  signal?: AbortSignal,
 ): Promise<void> =>
   new Promise((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      cleanup();
-      reject(new Error(`Endpoint readiness timeout after ${timeoutMs}ms`));
-    }, timeoutMs);
+    // Check if already aborted
+    if (signal?.aborted) {
+      reject(new Error("aborted"));
+      return;
+    }
 
     const cleanup = on(endpoint, (data) => {
       if (data && data.kind === "ready") {
-        clearTimeout(timeoutId);
+        removeAbortListener();
         cleanup();
         resolve();
       }
     });
+
+    let removeAbortListener: () => void = () => {};
+    if (signal) {
+      const abortHandler = () => {
+        cleanup();
+        reject(new Error("aborted"));
+      };
+      signal.addEventListener("abort", abortHandler, { once: true });
+      removeAbortListener = () => {
+        try {
+          signal.removeEventListener("abort", abortHandler);
+        } catch {
+          // Ignore cleanup errors
+        }
+      };
+    }
   });

@@ -79,7 +79,9 @@ console.log(buffer.byteLength); // 0
 
 ```ts ignore
 // Wait up to 3 seconds for endpoint to be ready
-using api = await wrap<Handlers>(endpoint, { timeout: 3000 });
+using api = await wrap<Handlers>(endpoint, {
+  signal: AbortSignal.timeout(3000),
+});
 ```
 
 ## Resource Management
@@ -112,7 +114,7 @@ Create a remote procedure caller.
 
 - `endpoint`: MessagePort, Worker, or BroadcastChannel
 - `options`: Optional configuration
-  - `timeout`: Milliseconds to wait for readiness (default: 5000)
+  - `signal`: AbortSignal to abort waiting for readiness
 
 Returns a callable function with signature:
 

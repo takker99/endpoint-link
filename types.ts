@@ -17,8 +17,8 @@ export interface RemoteProcedureOptions {
 
 /** Options for wrap function */
 export interface WrapOptions {
-  /** Timeout in milliseconds for waiting for endpoint readiness. @default 5000 */
-  timeout?: number;
+  /** Signal to abort waiting for endpoint readiness */
+  signal?: AbortSignal;
 }
 
 /** Remote return type - always wrapped in Promise */

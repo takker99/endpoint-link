@@ -57,13 +57,15 @@ declare const handlers: {
 // Server
 using disposable = expose(endpoint, handlers);
 
-// Client
-using api = await wrap<typeof handlers>(endpoint);
+// Client - with timeout via AbortSignal.timeout()
+using api = await wrap<typeof handlers>(endpoint, {
+  signal: AbortSignal.timeout(5000),
+});
 const result = await api("add", [1, 2]); // 3
 
-// With AbortSignal
-const controller = new AbortController();
-await api("longTask", [1000], { signal: controller.signal });
+// With AbortSignal for individual calls
+const callController = new AbortController();
+await api("longTask", [1000], { signal: callController.signal });
 
 // With Transferable
 const buffer = new ArrayBuffer(8);
@@ -124,6 +126,12 @@ waits for it (default 5s timeout) before allowing calls
 
 **Testing conventions**:
 
+- **Test file naming**: `filename.ts` → `filename_test.ts` (one test file per
+  module)
+  - Each module's tests are contained in their corresponding `*_test.ts` file
+  - Exception: Integration tests combining multiple modules use semantic names
+    (e.g., `mod_test.ts` for top-level API tests, `worker_test.ts` for worker
+    integration)
 - Use @std/assert: `assertEquals`, `assertRejects`, `assertThrows`
 - Test names format: "Component: behavior description" (e.g., "RPC basic success
   (value + Promise)")

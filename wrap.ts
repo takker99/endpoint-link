@@ -20,18 +20,18 @@ import { on, onMessageError } from "./on.ts";
  *
  * @example
  * ```ts ignore
- * using api = await wrap<MyAPI>(endpoint, { timeout: 3000 });
- * const result = await api("methodName", [arg1, arg2], { signal });
+ * using api = await wrap<MyAPI>(endpoint, { signal: AbortSignal.timeout(5000) });
+ * const result = await api("methodName", [arg1, arg2]);
  * ```
  */
 export const wrap = async <Map extends RemoteProcedureMap>(
   endpoint: Endpoint,
   options?: WrapOptions,
 ): Promise<RemoteProcedure<Map>> => {
-  const { timeout = 5000 } = options ?? {};
+  const { signal } = options ?? {};
 
   // Wait for endpoint to be ready
-  await waitForReady(endpoint, timeout);
+  await waitForReady(endpoint, signal);
 
   const pendingCalls = new Map<
     string,
