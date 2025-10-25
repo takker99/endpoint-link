@@ -1,9 +1,10 @@
 import { assertEquals } from "@std/assert/equals";
 import { signalReady } from "./signal_ready.ts";
-import { closePorts, memoryPair } from "./test_utils.ts";
+import { memoryPair } from "./test_utils.ts";
 
 Deno.test("signalReady()", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
 
   // deno-lint-ignore no-explicit-any
   let receivedMessage: any;
@@ -23,5 +24,4 @@ Deno.test("signalReady()", async () => {
   assertEquals(receivedMessage?.kind, "ready");
 
   cleanup();
-  closePorts(a, b);
 });

@@ -1,8 +1,15 @@
 import type { Endpoint } from "./shared_types.ts";
 
-// Helper: make an in-memory Endpoint using MessageChannel
-export function memoryPair(): [Endpoint, Endpoint] {
+/**
+ * Helper: make an in-memory Endpoint using {@linkcode MessageChannel}
+ *
+ * @internal
+ */
+export const memoryPair = ():
+  & { port1: Endpoint; port2: Endpoint }
+  & Disposable => {
   const mc = new MessageChannel();
+
   // Both ports are Endpoint-like; start them to ensure message delivery
   // deno-lint-ignore no-explicit-any
   const port1 = mc.port1 as any as Endpoint;
@@ -10,16 +17,18 @@ export function memoryPair(): [Endpoint, Endpoint] {
   const port2 = mc.port2 as any as Endpoint;
 
   // Start ports to ensure message delivery
-  if (port1.start) port1.start();
-  if (port2.start) port2.start();
+  port1?.start?.();
+  port2?.start?.();
 
-  return [port1, port2];
-}
-
-// Helper to close MessageChannel ports properly
-export function closePorts(a: Endpoint, b: Endpoint) {
-  // deno-lint-ignore no-explicit-any
-  if ((a as any).close) (a as any).close();
-  // deno-lint-ignore no-explicit-any
-  if ((b as any).close) (b as any).close();
-}
+  const pair: { port1: Endpoint; port2: Endpoint } & Disposable = {
+    port1,
+    port2,
+    [Symbol.dispose]: () => {
+      // deno-lint-ignore no-explicit-any
+      (port1 as any)?.close?.();
+      // deno-lint-ignore no-explicit-any
+      (port2 as any)?.close?.();
+    },
+  };
+  return pair;
+};

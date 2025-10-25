@@ -1,7 +1,7 @@
 import { wrap } from "./wrap.ts";
 import { expose } from "./expose.ts";
 import { assertRejects, assertThrows } from "@std/assert";
-import { closePorts, memoryPair } from "./test_utils.ts";
+import { memoryPair } from "./test_utils.ts";
 import type { Endpoint } from "./shared_types.ts";
 
 // Fake endpoint whose postMessage throws
@@ -40,7 +40,8 @@ Deno.test("wrap()", async (t) => {
   });
 
   await t.step("call throws after dispose synchronously", async () => {
-    const [a, b] = memoryPair();
+    using pair = memoryPair();
+    const { port1: a, port2: b } = pair;
     // expose a simple handler on a so b will receive ready
     // reuse existing expose by sending ready directly
     // trigger ready by posting ready from a
@@ -52,22 +53,22 @@ Deno.test("wrap()", async (t) => {
     // deno-lint-ignore no-explicit-any
     assertThrows(() => (api as any)("x", []), Error, "API has been disposed");
     // close ports
-    closePorts(a, b);
   });
 
   await t.step("handles messageerror silently", async () => {
-    const [a, b] = memoryPair();
+    using pair = memoryPair();
+    const { port1: a, port2: b } = pair;
 
     // Trigger ready
     a.postMessage({ kind: "ready" }, []);
     using _api = await wrap<Record<PropertyKey, never>>(b);
 
     // Just ensure the listener is attached
-    closePorts(a, b);
   });
 
   await t.step("dispose cleans up all resources", async () => {
-    const [a, b] = memoryPair();
+    using pair = memoryPair();
+    const { port1: a, port2: b } = pair;
     const handlers = {
       test() {
         return "works";
@@ -82,12 +83,11 @@ Deno.test("wrap()", async (t) => {
 
     // After dispose, pending calls map should be empty
     // (Can't directly verify, but shouldn't error)
-
-    closePorts(a, b);
   });
 
   await t.step("call with already-aborted signal", async () => {
-    const [a, b] = memoryPair();
+    using pair = memoryPair();
+    const { port1: a, port2: b } = pair;
     const handlers = {
       test() {
         return "works";
@@ -105,14 +105,13 @@ Deno.test("wrap()", async (t) => {
       Error,
       "aborted",
     );
-
-    closePorts(a, b);
   });
 
   await t.step(
     "call ignores removeEventListener error on resolve",
     async () => {
-      const [a, b] = memoryPair();
+      using pair = memoryPair();
+      const { port1: a, port2: b } = pair;
       const handlers = {
         test() {
           return "result";
@@ -140,15 +139,14 @@ Deno.test("wrap()", async (t) => {
         Error,
         "aborted",
       );
-
-      closePorts(a, b);
     },
   );
 
   await t.step(
     "ignores postMessage error when sending cancel",
     async () => {
-      const [a, b] = memoryPair();
+      using pair = memoryPair();
+      const { port1: a, port2: b } = pair;
       const handlers = {
         longTask() {
           return new Promise(() => {}); // Never resolves
@@ -167,8 +165,6 @@ Deno.test("wrap()", async (t) => {
         Error,
         "aborted",
       );
-
-      closePorts(a, b);
     },
   );
 });

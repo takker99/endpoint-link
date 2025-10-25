@@ -1,10 +1,11 @@
 import { wrap } from "./wrap.ts";
 import { expose } from "./expose.ts";
 import { assertEquals, assertRejects, assertThrows } from "@std/assert";
-import { closePorts, memoryPair } from "./test_utils.ts";
+import { memoryPair } from "./test_utils.ts";
 
 Deno.test("RPC basic success (value + Promise)", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     add(a: number, b: number, _s?: AbortSignal) {
       return a + b;
@@ -23,11 +24,11 @@ Deno.test("RPC basic success (value + Promise)", async () => {
 
   // Cleanup
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("RPC error propagation", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     boom(_n: number, _s?: AbortSignal) {
       throw new Error("boom");
@@ -39,11 +40,11 @@ Deno.test("RPC error propagation", async () => {
 
   // Cleanup
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("RPC abort via AbortSignal", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     longTask(_ms: number, signal?: AbortSignal): Promise<string> {
       // Simplified test that just checks if abort signal works
@@ -70,11 +71,11 @@ Deno.test("RPC abort via AbortSignal", async () => {
 
   // Cleanup
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("Transferable ArrayBuffer is passed", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     len(buf: ArrayBuffer, _s?: AbortSignal) {
       return (buf.byteLength ?? 0) as number;
@@ -88,11 +89,11 @@ Deno.test("Transferable ArrayBuffer is passed", async () => {
 
   // Cleanup
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("RPC handles missing handler", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     existing() {
       return "exists";
@@ -114,11 +115,11 @@ Deno.test("RPC handles missing handler", async () => {
 
   // Cleanup
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("RPC rejects Promise arguments", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     concat(str1: string, str2: string, _s?: AbortSignal) {
       return str1 + str2;
@@ -137,11 +138,11 @@ Deno.test("RPC rejects Promise arguments", async () => {
 
   // Cleanup
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("RPC handles active abort signal", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     slowTask(_ms: number, signal?: AbortSignal): Promise<string> {
       // Check if already aborted
@@ -166,11 +167,11 @@ Deno.test("RPC handles active abort signal", async () => {
 
   // Cleanup
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("RPC wrap creates callable API", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     test() {
       return "works";
@@ -187,11 +188,11 @@ Deno.test("RPC wrap creates callable API", async () => {
 
   // Cleanup
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("RPC expose handles cancel messages", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
 
   // Create handlers with a simple method
   const handlers = {
@@ -220,11 +221,11 @@ Deno.test("RPC expose handles cancel messages", async () => {
 
   // Cleanup
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("RPC expose handles malformed data", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     test() {
       return "works";
@@ -246,11 +247,11 @@ Deno.test("RPC expose handles malformed data", async () => {
 
   // Cleanup
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("RPC expose error when handler throws null/undefined", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     throwsNull() {
       throw null;
@@ -267,11 +268,11 @@ Deno.test("RPC expose error when handler throws null/undefined", async () => {
 
   // Cleanup
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("RPC expose handles legacy cancel message format", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
 
   // Set up a direct cancel test by manually sending a cancel message
   const handlers = {
@@ -300,11 +301,11 @@ Deno.test("RPC expose handles legacy cancel message format", async () => {
 
   // Cleanup
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("RPC expose works with frozen handlers object", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
 
   // Create a handlers object that is frozen
   const handlers = Object.freeze({
@@ -322,11 +323,11 @@ Deno.test("RPC expose works with frozen handlers object", async () => {
 
   // Cleanup
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("RPC wrap handles malformed response messages", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     test() {
       return "works";
@@ -347,11 +348,11 @@ Deno.test("RPC wrap handles malformed response messages", async () => {
 
   // Cleanup
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("RPC wrap abort signal event listener cleanup", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     test() {
       return "success";
@@ -369,11 +370,11 @@ Deno.test("RPC wrap abort signal event listener cleanup", async () => {
 
   // Cleanup
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("RPC wrap rejects promise arguments", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     test(_arg: string) {
       return "should not reach";
@@ -395,11 +396,11 @@ Deno.test("RPC wrap rejects promise arguments", async () => {
 
   // Cleanup
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("RPC wrap abort signal removeEventListener error handling", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     test() {
       return "success";
@@ -426,11 +427,11 @@ Deno.test("RPC wrap abort signal removeEventListener error handling", async () =
 
   // Cleanup
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("RPC expose handler aborted during execution", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
 
   const handlers = {
     taskThatThrowsAfterAbort(signal?: AbortSignal): Promise<string> {
@@ -470,11 +471,11 @@ Deno.test("RPC expose handler aborted during execution", async () => {
 
   // Cleanup
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("RPC wrap response with unknown reply ID", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     test() {
       return "works";
@@ -495,11 +496,11 @@ Deno.test("RPC wrap response with unknown reply ID", async () => {
 
   // Cleanup
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("RPC expose cancel with missing callId", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     test() {
       return "works";
@@ -516,11 +517,11 @@ Deno.test("RPC expose cancel with missing callId", async () => {
 
   // Cleanup
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("RPC expose sends ready signal (integrated with wrap)", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     test() {
       return "works";
@@ -540,11 +541,11 @@ Deno.test("RPC expose sends ready signal (integrated with wrap)", async () => {
 
   // Cleanup
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("RPC readiness protocol with delayed expose", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     test() {
       return "success";
@@ -569,11 +570,11 @@ Deno.test("RPC readiness protocol with delayed expose", async () => {
 
   // Cleanup
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("RPC wrap API throws after disposal via Symbol.dispose", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     test() {
       return "success";
@@ -594,12 +595,11 @@ Deno.test("RPC wrap API throws after disposal via Symbol.dispose", async () => {
     Error,
     "API has been disposed",
   );
-
-  closePorts(a, b);
 });
 
 Deno.test("RPC wrap API with using syntax automatically disposes", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     test() {
       return "success";
@@ -622,12 +622,11 @@ Deno.test("RPC wrap API with using syntax automatically disposes", async () => {
     Error,
     "API has been disposed",
   );
-
-  closePorts(a, b);
 });
 
 Deno.test("RPC wrap API with using syntax works correctly", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     add(x: number, y: number) {
       return x + y;
@@ -644,12 +643,11 @@ Deno.test("RPC wrap API with using syntax works correctly", async () => {
   // After exiting the using block, the API should be disposed
   // We can't test it directly since api is out of scope
   // but we test it in the previous test
-
-  closePorts(a, b);
 });
 
 Deno.test("RPC expose with using syntax cleans up listeners", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     test() {
       return "success";
@@ -672,12 +670,11 @@ Deno.test("RPC expose with using syntax cleans up listeners", async () => {
     Error,
     "aborted",
   );
-
-  closePorts(a, b);
 });
 
 Deno.test("RPC messageerror event listener attached in expose", () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a } = pair;
   const handlers = {
     test() {
       return "success";
@@ -707,12 +704,11 @@ Deno.test("RPC messageerror event listener attached in expose", () => {
 
   // Verify messageerror listener was attached
   assertEquals(messageerrorHandled, true);
-
-  closePorts(a, b);
 });
 
 Deno.test("RPC messageerror event listener attached in wrap", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     test() {
       return "success";
@@ -746,11 +742,11 @@ Deno.test("RPC messageerror event listener attached in wrap", async () => {
   assertEquals(messageerrorHandled, true);
 
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("RPC wrap with custom signal option", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     test() {
       return "success";
@@ -766,11 +762,11 @@ Deno.test("RPC wrap with custom signal option", async () => {
   assertEquals(await api("test", []), "success");
 
   api[Symbol.dispose]();
-  closePorts(a, b);
 });
 
 Deno.test("RPC wrap with transfer option", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   const handlers = {
     processBuffer(buf: ArrayBuffer, _s?: AbortSignal) {
       return buf.byteLength;
@@ -792,5 +788,4 @@ Deno.test("RPC wrap with transfer option", async () => {
   assertEquals(buffer.byteLength, 0);
 
   api[Symbol.dispose]();
-  closePorts(a, b);
 });

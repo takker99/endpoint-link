@@ -1,13 +1,14 @@
 import { waitForReady } from "./wait_for_ready.ts";
 import { signalReady } from "./signal_ready.ts";
 import { assertRejects } from "@std/assert";
-import { closePorts, memoryPair } from "./test_utils.ts";
+import { memoryPair } from "./test_utils.ts";
 
 Deno.test("waitForReady()", async (t) => {
   await t.step(
     "resolves when ready message received",
     async () => {
-      const [a, b] = memoryPair();
+      using pair = memoryPair();
+      const { port1: a, port2: b } = pair;
 
       // Start waiting for ready
       const readyPromise = waitForReady(b);
@@ -17,13 +18,12 @@ Deno.test("waitForReady()", async (t) => {
 
       // Should resolve without throwing
       await readyPromise;
-
-      closePorts(a, b);
     },
   );
 
   await t.step("aborts when signal is aborted", async () => {
-    const [a, b] = memoryPair();
+    using pair = memoryPair();
+    const { port2: b } = pair;
 
     // Wait for ready with abort signal (timeout after 50ms)
     await assertRejects(
@@ -31,12 +31,11 @@ Deno.test("waitForReady()", async (t) => {
       Error,
       "aborted",
     );
-
-    closePorts(a, b);
   });
 
   await t.step("rejects immediately if signal is already aborted", async () => {
-    const [a, b] = memoryPair();
+    using pair = memoryPair();
+    const { port2: b } = pair;
 
     // Create an already-aborted signal
     const controller = new AbortController();
@@ -48,19 +47,17 @@ Deno.test("waitForReady()", async (t) => {
       Error,
       "aborted",
     );
-
-    closePorts(a, b);
   });
 
   await t.step("ignores removeEventListener errors", async () => {
     // create a memory pair
-    const [a, b] = memoryPair();
+    using pair = memoryPair();
+    const { port1: a, port2: b } = pair;
 
     // fake AbortSignal whose removeEventListener throws
     const fakeSignal = {
       aborted: false,
-      // deno-lint-ignore no-explicit-any
-      addEventListener: (_: string, __: any) => {},
+      addEventListener: () => {},
       removeEventListener: () => {
         throw new Error("remove failed");
       },
@@ -72,7 +69,5 @@ Deno.test("waitForReady()", async (t) => {
     a.postMessage({ kind: "ready" }, []);
 
     await readyPromise;
-
-    closePorts(a, b);
   });
 });

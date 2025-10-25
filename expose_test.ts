@@ -1,11 +1,12 @@
 import { expose } from "./expose.ts";
 import { wrap } from "./wrap.ts";
 import { assertRejects } from "@std/assert";
-import { closePorts, memoryPair } from "./test_utils.ts";
+import { memoryPair } from "./test_utils.ts";
 
 Deno.test("expose()", async (t) => {
   await t.step("handles messageerror silently", () => {
-    const [a, b] = memoryPair();
+    using pair = memoryPair();
+    const { port1: a } = pair;
     const handlers = {
       test() {
         return "works";
@@ -18,11 +19,11 @@ Deno.test("expose()", async (t) => {
     // Just make sure expose sets up the messageerror listener
     // (No way to trigger real messageerror without unserializable data)
     // This test ensures the listener is attached without crashing
-    closePorts(a, b);
   });
 
   await t.step("handler throws and sends error result", async () => {
-    const [a, b] = memoryPair();
+    using pair = memoryPair();
+    const { port1: a, port2: b } = pair;
     const handlers = {
       throwError() {
         throw new Error("handler error");
@@ -37,12 +38,11 @@ Deno.test("expose()", async (t) => {
       Error,
       "handler error",
     );
-
-    closePorts(a, b);
   });
 
   await t.step("handler throws null and sends unknown error", async () => {
-    const [a, b] = memoryPair();
+    using pair = memoryPair();
+    const { port1: a, port2: b } = pair;
     const handlers = {
       throwNull() {
         throw null;
@@ -57,14 +57,13 @@ Deno.test("expose()", async (t) => {
       Error,
       "unknown",
     );
-
-    closePorts(a, b);
   });
 
   await t.step(
     "sends aborted error when handler is cancelled",
     async () => {
-      const [a, b] = memoryPair();
+      using pair = memoryPair();
+      const { port1: a, port2: b } = pair;
       const handlers = {
         longTask() {
           return new Promise(() => {}); // Never resolves
@@ -88,13 +87,12 @@ Deno.test("expose()", async (t) => {
         Error,
         "aborted",
       );
-
-      closePorts(a, b);
     },
   );
 
   await t.step("dispose removes all listeners", () => {
-    const [a, b] = memoryPair();
+    using pair = memoryPair();
+    const { port1: a } = pair;
     const handlers = {
       test() {
         return "works";
@@ -108,6 +106,5 @@ Deno.test("expose()", async (t) => {
     disposer[Symbol.dispose]();
 
     // After dispose, should not respond to new calls (listeners removed)
-    closePorts(a, b);
   });
 });

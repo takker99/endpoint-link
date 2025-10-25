@@ -1,9 +1,10 @@
 import { assertEquals } from "@std/assert";
 import { on, onMessageError } from "./on.ts";
-import { closePorts, memoryPair } from "./test_utils.ts";
+import { memoryPair } from "./test_utils.ts";
 
 Deno.test("on() attaches message listener", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   let received = false;
 
   const remove = on(a, (data) => {
@@ -21,11 +22,11 @@ Deno.test("on() attaches message listener", async () => {
 
   assertEquals(received, true);
   remove();
-  closePorts(a, b);
 });
 
 Deno.test("onMessageError() attaches messageerror listener", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a } = pair;
   let errorReceived = false;
 
   const remove = onMessageError(a, (ev) => {
@@ -50,11 +51,11 @@ Deno.test("onMessageError() attaches messageerror listener", async () => {
 
   assertEquals(errorReceived, true);
   remove();
-  closePorts(a, b);
 });
 
 Deno.test("on() remove function stops listening", async () => {
-  const [a, b] = memoryPair();
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
   let count = 0;
 
   const remove = on(a, () => {
@@ -77,5 +78,4 @@ Deno.test("on() remove function stops listening", async () => {
   await new Promise((resolve) => setTimeout(resolve, 10));
 
   assertEquals(count, 1);
-  closePorts(a, b);
 });
