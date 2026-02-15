@@ -1,6 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { on, onMessageError } from "./on.ts";
 import { memoryPair } from "./test_utils.ts";
+import { delay } from "@std/async/delay";
 
 Deno.test("on() attaches message listener", async () => {
   using pair = memoryPair();
@@ -13,12 +14,12 @@ Deno.test("on() attaches message listener", async () => {
   });
 
   // Wait a bit to let listener attach
-  await new Promise((resolve) => setTimeout(resolve, 10));
+  await delay(10);
 
   b.postMessage("test");
 
   // Wait for async message
-  await new Promise((resolve) => setTimeout(resolve, 10));
+  await delay(10);
 
   assertEquals(received, true);
   remove();
@@ -35,7 +36,7 @@ Deno.test("onMessageError() attaches messageerror listener", async () => {
   });
 
   // Wait a bit to let listener attach
-  await new Promise((resolve) => setTimeout(resolve, 10));
+  await delay(10);
 
   // Trigger a messageerror by dispatching the event
   // Note: In practice, messageerror is triggered by the browser/runtime
@@ -47,7 +48,7 @@ Deno.test("onMessageError() attaches messageerror listener", async () => {
   (a as any).dispatchEvent?.(event);
 
   // Wait for async event
-  await new Promise((resolve) => setTimeout(resolve, 10));
+  await delay(10);
 
   assertEquals(errorReceived, true);
   remove();
@@ -63,19 +64,19 @@ Deno.test("on() remove function stops listening", async () => {
   });
 
   // Wait a bit to let listener attach
-  await new Promise((resolve) => setTimeout(resolve, 10));
+  await delay(10);
 
   b.postMessage("test1");
 
   // Wait for first message
-  await new Promise((resolve) => setTimeout(resolve, 10));
+  await delay(10);
 
   remove();
 
   b.postMessage("test2");
 
   // Wait a bit to ensure second message doesn't arrive
-  await new Promise((resolve) => setTimeout(resolve, 10));
+  await delay(10);
 
   assertEquals(count, 1);
 });

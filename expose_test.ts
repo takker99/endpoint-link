@@ -1,5 +1,6 @@
 import { expose } from "./expose.ts";
 import { wrap } from "./wrap.ts";
+import { delay } from "@std/async/delay";
 import { assertRejects } from "@std/assert";
 import { memoryPair } from "./test_utils.ts";
 
@@ -77,7 +78,7 @@ Deno.test("expose()", async (t) => {
       const callPromise = api("longTask", [], { signal: controller.signal });
 
       // Wait for the call to be sent and registered on expose side
-      await new Promise((r) => setTimeout(r, 10));
+      await delay(10);
 
       // Send cancel message
       controller.abort();
