@@ -1,4 +1,5 @@
 import { assertEquals } from "@std/assert/equals";
+import { delay } from "@std/async/delay";
 import { signalReady } from "./signal_ready.ts";
 import { memoryPair } from "./test_utils.ts";
 
@@ -19,7 +20,7 @@ Deno.test("signalReady()", async () => {
   signalReady(a);
 
   // Give it time to arrive
-  await new Promise((resolve) => setTimeout(resolve, 10));
+  await delay(10);
 
   assertEquals(receivedMessage?.kind, "ready");
 
