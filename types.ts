@@ -1,3 +1,10 @@
+/**
+ * @module
+ *
+ * Type definitions for remote procedure calls.
+ * Provides interfaces and types for type-safe RPC communication.
+ */
+
 // Phase 1 type helpers: non-stream RPC only.
 
 /** A function that can be called remotely */
@@ -19,6 +26,14 @@ export interface RemoteProcedureOptions {
 export interface WrapOptions {
   /** Signal to abort waiting for endpoint readiness */
   signal?: AbortSignal;
+  /** Custom handler for message deserialization errors */
+  onMessageError?: (ev: MessageEvent) => void;
+}
+
+/** Options for expose function */
+export interface ExposeOptions {
+  /** Custom handler for message deserialization errors */
+  onMessageError?: (ev: MessageEvent) => void;
 }
 
 /** Remote return type - always wrapped in Promise */

@@ -1,3 +1,10 @@
+/**
+ * @module
+ *
+ * Client-side RPC wrapper.
+ * Creates typed remote procedure callers for calling functions on the other side of an endpoint.
+ */
+
 import type { CallMsg, CancelMsg, Msg } from "./protocol.ts";
 import type { Endpoint } from "./shared_types.ts";
 import type {
@@ -28,7 +35,7 @@ export const wrap = async <Map extends RemoteProcedureMap>(
   endpoint: Endpoint,
   options?: WrapOptions,
 ): Promise<RemoteProcedure<Map>> => {
-  const { signal } = options ?? {};
+  const { signal, onMessageError: customOnMessageError } = options ?? {};
 
   // Wait for endpoint to be ready
   await waitForReady(endpoint, signal);
@@ -60,9 +67,13 @@ export const wrap = async <Map extends RemoteProcedureMap>(
   });
 
   // Handle deserialization errors
-  const cleanupErrorListener = onMessageError(endpoint, (ev: MessageEvent) => {
-    console.error("Message deserialization error:", ev);
-  });
+  const cleanupErrorListener = onMessageError(
+    endpoint,
+    customOnMessageError ??
+      ((ev: MessageEvent) => {
+        console.error("Message deserialization error:", ev);
+      }),
+  );
 
   // Main call function
   const call = <Name extends keyof Map>(

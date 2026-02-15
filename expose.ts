@@ -1,6 +1,17 @@
+/**
+ * @module
+ *
+ * Server-side RPC handler registration.
+ * Exposes local functions to be called remotely via an endpoint.
+ */
+
 import type { CancelMsg, Msg, ResultMsg } from "./protocol.ts";
 import type { Endpoint } from "./shared_types.ts";
-import type { ExposeDisposable, RemoteProcedureMap } from "./types.ts";
+import type {
+  ExposeDisposable,
+  ExposeOptions,
+  RemoteProcedureMap,
+} from "./types.ts";
 import { signalReady } from "./signal_ready.ts";
 import { on, onMessageError } from "./on.ts";
 
@@ -10,12 +21,14 @@ import { on, onMessageError } from "./on.ts";
  *
  * @param endpoint The endpoint to register handlers on.
  * @param handlers Map of handler functions to expose.
+ * @param options Configuration options.
  * @returns A Disposable object for resource cleanup with `using` syntax.
  */
 
 export const expose = <H extends RemoteProcedureMap>(
   endpoint: Endpoint,
   handlers: H,
+  options?: ExposeOptions,
 ): ExposeDisposable => {
   const controllerMap = new Map<string, AbortController>();
 
@@ -73,9 +86,13 @@ export const expose = <H extends RemoteProcedureMap>(
   });
 
   // Handle messageerror events (when message cannot be deserialized)
-  const removeMessageError = onMessageError(endpoint, (ev: MessageEvent) => {
-    console.error("Message deserialization error:", ev);
-  });
+  const removeMessageError = onMessageError(
+    endpoint,
+    options?.onMessageError ??
+      ((ev: MessageEvent) => {
+        console.error("Message deserialization error:", ev);
+      }),
+  );
 
   // Signal that this endpoint is ready to receive messages
   signalReady(endpoint);

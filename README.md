@@ -84,6 +84,92 @@ using api = await wrap<Handlers>(endpoint, {
 });
 ```
 
+### With Web Workers
+
+**worker.ts:**
+
+```ts ignore
+import { expose } from "jsr:@takker/endpoint-link";
+
+const handlers = {
+  async processData(data: string) {
+    // Heavy computation in worker
+    return data.toUpperCase();
+  },
+  multiply(a: number, b: number) {
+    return a * b;
+  },
+};
+
+// Expose handlers to the main thread
+using disposable = expose(self as any, handlers);
+```
+
+**main.ts:**
+
+```ts ignore
+import { wrap } from "jsr:@takker/endpoint-link";
+
+const worker = new Worker(new URL("./worker.ts", import.meta.url).href, {
+  type: "module",
+});
+
+using api = await wrap<typeof handlers>(worker);
+
+const result = await api("processData", ["hello"]);
+console.log(result); // "HELLO"
+
+const product = await api("multiply", [3, 4]);
+console.log(product); // 12
+```
+
+### With BroadcastChannel
+
+**sender.ts:**
+
+```ts ignore
+import { wrap } from "jsr:@takker/endpoint-link";
+
+const channel = new BroadcastChannel("my-channel");
+using api = await wrap<Handlers>(channel as any);
+
+await api("notify", ["Hello from sender!"]);
+```
+
+**receiver.ts:**
+
+```ts ignore
+import { expose } from "jsr:@takker/endpoint-link";
+
+const channel = new BroadcastChannel("my-channel");
+
+const handlers = {
+  notify(message: string) {
+    console.log("Received:", message);
+  },
+};
+
+using disposable = expose(channel as any, handlers);
+```
+
+### Custom Error Handling
+
+```ts ignore
+// Custom error handler for message deserialization errors
+using disposable = expose(endpoint, handlers, {
+  onMessageError: (ev) => {
+    // Send to your error tracking service
+    myErrorTracker.log("Message deserialization failed", ev);
+  },
+});
+
+using api = await wrap<Handlers>(endpoint, {
+  onMessageError: (ev) => {
+    console.warn("Failed to deserialize message:", ev);
+  },
+});
+```
+
 ## Resource Management
 
 Both `expose` and `wrap` return Disposable objects for automatic cleanup:
@@ -115,6 +201,7 @@ Create a remote procedure caller.
 - `endpoint`: MessagePort, Worker, or BroadcastChannel
 - `options`: Optional configuration
   - `signal`: AbortSignal to abort waiting for readiness
+  - `onMessageError`: Custom handler for message deserialization errors
 
 Returns a callable function with signature:
 
@@ -122,12 +209,14 @@ Returns a callable function with signature:
 <Name>(name: Name, args: Parameters<Map[Name]>, options?: RemoteProcedureOptions)
 ```
 
-### `expose<Map>(endpoint, handlers)`
+### `expose<Map>(endpoint, handlers, options?)`
 
 Register handlers on an endpoint.
 
 - `endpoint`: MessagePort, Worker, or BroadcastChannel
 - `handlers`: Object mapping names to handler functions
+- `options`: Optional configuration
+  - `onMessageError`: Custom handler for message deserialization errors
 
 Returns a Disposable for cleanup.
 
@@ -138,22 +227,6 @@ interface RemoteProcedureOptions {
   transfer?: Transferable[]; // Objects to transfer
   signal?: AbortSignal; // Cancellation signal
 }
-```
-
-## Migration from v0.x
-
-```ts ignore
-// Before
-const api = await wrap<Handlers>(endpoint, ["add", "mul"]);
-await api.add(1, 2);
-await api.mul(2, 3, abortSignal);
-api.close();
-
-// After
-const api = await wrap<Handlers>(endpoint);
-await api("add", [1, 2]);
-await api("mul", [2, 3], { signal: abortSignal });
-api[Symbol.dispose]();
 ```
 
 ## License
