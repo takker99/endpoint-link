@@ -33,7 +33,7 @@
         "test"
       ]
     },
-    "lint:doc": "deno doc --lint mod.ts",
+    "lint:doc": "deno doc --lint **/*.ts",
     "test": "deno test --allow-read=./ --doc --parallel --shuffle --no-check --coverage",
     "type-check": "deno check --remote --doc **/*.ts && deno check --remote --doc-only **/*.md",
     "update": "deno outdated --update"

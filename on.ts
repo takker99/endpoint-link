@@ -1,6 +1,12 @@
 import type { Endpoint } from "./shared_types.ts";
 
-// attach message listener; returns a remover.
+/**
+ * Attach message listener to an endpoint and return a cleanup function.
+ * @internal
+ * @param endpoint The endpoint to attach the listener to.
+ * @param handler The handler function to call on message events.
+ * @returns A function to remove the listener.
+ */
 // deno-lint-ignore no-explicit-any
 export const on = (endpoint: Endpoint, handler: (data: any) => void) => {
   const controller = new AbortController();
@@ -12,8 +18,12 @@ export const on = (endpoint: Endpoint, handler: (data: any) => void) => {
 };
 
 /**
- * Attach messageerror listener; returns a remover.
+ * Attach messageerror listener to an endpoint and return a cleanup function.
  * Called when a message cannot be deserialized.
+ * @internal
+ * @param endpoint The endpoint to attach the listener to.
+ * @param handler The handler function to call on messageerror events.
+ * @returns A function to remove the listener.
  */
 export const onMessageError = (
   endpoint: Endpoint,
