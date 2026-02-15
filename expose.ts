@@ -1,3 +1,10 @@
+/**
+ * @module
+ *
+ * Server-side RPC handler registration.
+ * Exposes local functions to be called remotely via an endpoint.
+ */
+
 import type { CancelMsg, Msg, ResultMsg } from "./protocol.ts";
 import type { Endpoint } from "./shared_types.ts";
 import type {

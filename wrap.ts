@@ -1,3 +1,10 @@
+/**
+ * @module
+ *
+ * Client-side RPC wrapper.
+ * Creates typed remote procedure callers for calling functions on the other side of an endpoint.
+ */
+
 import type { CallMsg, CancelMsg, Msg } from "./protocol.ts";
 import type { Endpoint } from "./shared_types.ts";
 import type {

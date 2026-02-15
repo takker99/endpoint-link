@@ -1,3 +1,10 @@
+/**
+ * @module
+ *
+ * Shared type definitions for communication endpoints.
+ * Defines the Endpoint interface for MessagePort-like objects.
+ */
+
 // Endpoint abstraction (MessagePort-like) and Transferable set.
 
 /** MessagePort-like interface for cross-context communication. */

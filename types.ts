@@ -1,3 +1,10 @@
+/**
+ * @module
+ *
+ * Type definitions for remote procedure calls.
+ * Provides interfaces and types for type-safe RPC communication.
+ */
+
 // Phase 1 type helpers: non-stream RPC only.
 
 /** A function that can be called remotely */
