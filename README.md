@@ -229,22 +229,6 @@ interface RemoteProcedureOptions {
 }
 ```
 
-## Migration from v0.x
-
-```ts ignore
-// Before
-const api = await wrap<Handlers>(endpoint, ["add", "mul"]);
-await api.add(1, 2);
-await api.mul(2, 3, abortSignal);
-api.close();
-
-// After
-const api = await wrap<Handlers>(endpoint);
-await api("add", [1, 2]);
-await api("mul", [2, 3], { signal: abortSignal });
-api[Symbol.dispose]();
-```
-
 ## License
 
 MIT
