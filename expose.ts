@@ -53,7 +53,9 @@ export const expose = <H extends RemoteProcedureMap>(
       try {
         // deno-lint-ignore no-explicit-any
         const res = await (h as any)(...args, ac.signal);
-        const transferList = (res as any)?.[kTransferables] as
+        const transferList = (res as Record<symbol, unknown>)?.[
+          kTransferables
+        ] as
           | Transferable[]
           | undefined;
         endpoint.postMessage(

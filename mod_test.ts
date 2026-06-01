@@ -792,7 +792,7 @@ Deno.test("RPC wrap with transfer option", async () => {
 
 Deno.test("RPC expose uses default onMessageError handler", () => {
   using pair = memoryPair();
-  const { port1: a, port2: b } = pair;
+  const { port1: a } = pair;
   const handlers = {
     test() {
       return "works";
@@ -825,7 +825,7 @@ Deno.test("RPC expose uses default onMessageError handler", () => {
 
 Deno.test("RPC expose uses custom onMessageError handler", () => {
   using pair = memoryPair();
-  const { port1: a, port2: b } = pair;
+  const { port1: a } = pair;
   const handlers = {
     test() {
       return "works";
@@ -900,7 +900,7 @@ Deno.test("RPC wrap ignores cancel postMessage errors", async () => {
   const originalPostMessage = b.postMessage.bind(b);
   // deno-lint-ignore no-explicit-any
   (b as any).postMessage = function (
-    message: any,
+    message: { kind?: string },
     transfer?: Transferable[],
   ) {
     if (message.kind === "cancel") {
