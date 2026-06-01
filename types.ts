@@ -36,6 +36,23 @@ export interface ExposeOptions {
   onMessageError?: (ev: MessageEvent) => void;
 }
 
+/** Symbol to mark transferable objects on return values */
+export const kTransferables = Symbol.for("endpoint-link.transferables");
+
+/**
+ * Mark a return value with transferable objects.
+ * The value itself is returned unchanged, but the transfer list is
+ * attached via a non-enumerable Symbol property.
+ */
+export function transferables<T>(value: T, list: Transferable[]): T {
+  Reflect.defineProperty(value, kTransferables, {
+    value: list,
+    enumerable: false,
+    writable: false,
+  });
+  return value;
+}
+
 /** Remote return type - always wrapped in Promise */
 export type RemoteReturnType<T> = Promise<Awaited<T>>;
 
