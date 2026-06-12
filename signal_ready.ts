@@ -3,5 +3,6 @@ import type { Endpoint } from "./shared_types.ts";
 
 /** Signal that this endpoint is ready to receive messages. */
 
-export const signalReady = (endpoint: Endpoint) =>
+export const signalReady = (endpoint: Endpoint): void => {
   endpoint.postMessage({ kind: "ready" } as ReadyMsg, []);
+};

@@ -75,6 +75,30 @@ const result = await api("processBuffer", [buffer], {
 console.log(buffer.byteLength); // 0
 ```
 
+### Transfer from Handler
+
+```ts ignore
+import { transferables } from "jsr:@takker/endpoint-link";
+
+const handlers = {
+  getBuffer() {
+    const buf = new ArrayBuffer(1024);
+    // Mark the return value with transferable objects
+    return transferables(buf, [buf]);
+  },
+  getStream() {
+    const stream = new ReadableStream({ ... });
+    return transferables(stream, [stream]);
+  },
+  getPort() {
+    const mc = new MessageChannel();
+    return transferables(mc.port1, [mc.port1]);
+  },
+};
+
+using disposable = expose(endpoint, handlers);
+```
+
 ### Custom Timeout
 
 ```ts ignore

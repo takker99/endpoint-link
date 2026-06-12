@@ -233,13 +233,13 @@ Deno.test("RPC expose handles malformed data", async () => {
   };
   using _disposable = expose(a, handlers);
 
-  // Send malformed data
-  a.postMessage(null, []);
-  a.postMessage(undefined, []);
-  a.postMessage({}, []);
-  a.postMessage({ kind: "unknown" }, []);
-  a.postMessage({ kind: "call" }, []); // missing id/name
-  a.postMessage({ kind: "call", id: "test-id" }, []); // missing name
+  // Send malformed data on b so it reaches a where expose listens
+  b.postMessage(null, []);
+  b.postMessage(undefined, []);
+  b.postMessage({}, []);
+  b.postMessage({ kind: "unknown" }, []);
+  b.postMessage({ kind: "call" }, []); // missing id/name
+  b.postMessage({ kind: "call", id: "test-id" }, []); // missing name
 
   // Regular call should still work
   const api = await wrap<typeof handlers>(b);
@@ -282,18 +282,18 @@ Deno.test("RPC expose handles legacy cancel message format", async () => {
   };
   using _disposable = expose(a, handlers);
 
-  // Send a legacy cancel message with just 'id' (no idRef)
-  a.postMessage({ id: "some-call-id", kind: "cancel" }, []);
+  // Send a legacy cancel message with just 'id' (no idRef) on b so it reaches a
+  b.postMessage({ id: "some-call-id", kind: "cancel" }, []);
 
-  // Send a cancel message with idRef as well
-  a.postMessage({
+  // Send a cancel message with idRef as well on b so it reaches a
+  b.postMessage({
     id: "cancel-msg-id",
     kind: "cancel",
     idRef: "some-other-call-id",
   }, []);
 
-  // Send a cancel with no id at all
-  a.postMessage({ kind: "cancel" }, []);
+  // Send a cancel with no id at all on b so it reaches a
+  b.postMessage({ kind: "cancel" }, []);
 
   // Regular call should still work
   const api = await wrap<typeof handlers>(b);
@@ -336,12 +336,12 @@ Deno.test("RPC wrap handles malformed response messages", async () => {
   using _disposable = expose(a, handlers);
   const api = await wrap<typeof handlers>(b);
 
-  // Send malformed response messages
-  b.postMessage(null, []);
-  b.postMessage({}, []);
-  b.postMessage({ kind: "unknown" }, []);
-  b.postMessage({ kind: "result" }, []); // missing id
-  b.postMessage({ kind: "result", id: "nonexistent" }, []); // unknown id
+  // Send malformed response messages on a so they reach b where wrap listens
+  a.postMessage(null, []);
+  a.postMessage({}, []);
+  a.postMessage({ kind: "unknown" }, []);
+  a.postMessage({ kind: "result" }, []); // missing id
+  a.postMessage({ kind: "result", id: "nonexistent" }, []); // unknown id
 
   // Regular call should still work
   assertEquals(await api("test", []), "works");
@@ -508,9 +508,9 @@ Deno.test("RPC expose cancel with missing callId", async () => {
   };
   using _disposable = expose(a, handlers);
 
-  // Send cancel message with no callId/idRef - should be handled gracefully
-  a.postMessage({ kind: "cancel", id: "cancel-msg-id" }, []); // No idRef
-  a.postMessage({ kind: "cancel" }, []); // No id or idRef
+  // Send cancel message with no callId/idRef on b so it reaches a
+  b.postMessage({ kind: "cancel", id: "cancel-msg-id" }, []); // No idRef
+  b.postMessage({ kind: "cancel" }, []); // No id or idRef
 
   const api = await wrap<typeof handlers>(b);
   assertEquals(await api("test", []), "works");
@@ -786,6 +786,140 @@ Deno.test("RPC wrap with transfer option", async () => {
 
   // Buffer should be neutered (transferred)
   assertEquals(buffer.byteLength, 0);
+
+  api[Symbol.dispose]();
+});
+
+Deno.test("RPC expose uses default onMessageError handler", () => {
+  using pair = memoryPair();
+  const { port1: a } = pair;
+  const handlers = {
+    test() {
+      return "works";
+    },
+  };
+
+  // Spy on console.error
+  const originalConsoleError = console.error;
+  let consoleErrorCalled = false;
+  // deno-lint-ignore no-explicit-any
+  console.error = (..._args: any[]) => {
+    consoleErrorCalled = true;
+  };
+
+  try {
+    // Expose without custom onMessageError - should use default handler
+    using _disposable = expose(a, handlers);
+
+    // Dispatch synthetic messageerror on a where expose listens
+    // deno-lint-ignore no-explicit-any
+    (a as any).dispatchEvent(
+      new MessageEvent("messageerror", { data: "test error" }),
+    );
+
+    assertEquals(consoleErrorCalled, true);
+  } finally {
+    console.error = originalConsoleError;
+  }
+});
+
+Deno.test("RPC expose uses custom onMessageError handler", () => {
+  using pair = memoryPair();
+  const { port1: a } = pair;
+  const handlers = {
+    test() {
+      return "works";
+    },
+  };
+
+  let customHandlerCalled = false;
+
+  // Expose with custom onMessageError
+  using _disposable = expose(a, handlers, {
+    onMessageError: (_ev: MessageEvent) => {
+      customHandlerCalled = true;
+    },
+  });
+
+  // Dispatch synthetic messageerror on a where expose listens
+  // deno-lint-ignore no-explicit-any
+  (a as any).dispatchEvent(
+    new MessageEvent("messageerror", { data: "test error" }),
+  );
+
+  assertEquals(customHandlerCalled, true);
+});
+
+Deno.test("RPC wrap uses default onMessageError handler", async () => {
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
+  const handlers = {
+    test() {
+      return "works";
+    },
+  };
+
+  // Spy on console.error
+  const originalConsoleError = console.error;
+  let consoleErrorCalled = false;
+  // deno-lint-ignore no-explicit-any
+  console.error = (..._args: any[]) => {
+    consoleErrorCalled = true;
+  };
+
+  try {
+    using _disposable = expose(a, handlers);
+    // Wrap without custom onMessageError - should use default handler
+    const api = await wrap<typeof handlers>(b);
+
+    // Dispatch synthetic messageerror on b where wrap listens
+    // deno-lint-ignore no-explicit-any
+    (b as any).dispatchEvent(
+      new MessageEvent("messageerror", { data: "test error" }),
+    );
+
+    assertEquals(consoleErrorCalled, true);
+    api[Symbol.dispose]();
+  } finally {
+    console.error = originalConsoleError;
+  }
+});
+
+Deno.test("RPC wrap ignores cancel postMessage errors", async () => {
+  using pair = memoryPair();
+  const { port1: a, port2: b } = pair;
+  const handlers = {
+    longTask(_ms: number, _signal?: AbortSignal): Promise<string> {
+      return new Promise(() => {}); // Never resolves
+    },
+  };
+
+  using _disposable = expose(a, handlers);
+
+  // Monkey-patch b.postMessage to throw for cancel messages
+  const originalPostMessage = b.postMessage.bind(b);
+  // deno-lint-ignore no-explicit-any
+  (b as any).postMessage = function (
+    message: { kind?: string },
+    transfer?: Transferable[],
+  ) {
+    if (message.kind === "cancel") {
+      throw new Error("cancel post failed");
+    }
+    return originalPostMessage(message, transfer);
+  };
+
+  const api = await wrap<typeof handlers>(b);
+
+  const callPromise = api("longTask", [100], {
+    signal: AbortSignal.timeout(10),
+  });
+
+  await assertRejects(
+    () => callPromise,
+    Error,
+    "aborted",
+  );
 
   api[Symbol.dispose]();
 });

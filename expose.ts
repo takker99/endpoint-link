@@ -12,6 +12,7 @@ import type {
   ExposeOptions,
   RemoteProcedureMap,
 } from "./types.ts";
+import { kTransferables } from "./types.ts";
 import { signalReady } from "./signal_ready.ts";
 import { on, onMessageError } from "./on.ts";
 
@@ -52,9 +53,14 @@ export const expose = <H extends RemoteProcedureMap>(
       try {
         // deno-lint-ignore no-explicit-any
         const res = await (h as any)(...args, ac.signal);
+        const transferList = (res as Record<symbol, unknown>)?.[
+          kTransferables
+        ] as
+          | Transferable[]
+          | undefined;
         endpoint.postMessage(
           { id, kind: "result", result: res } as ResultMsg,
-          [],
+          transferList ?? [],
         );
       } catch (e) {
         if (ac.signal.aborted) {
